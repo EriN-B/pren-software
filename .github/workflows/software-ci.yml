@@ -16,3 +16,17 @@ jobs:
       - run: uv run ruff format --check
       - run: uv run pytest
       - run: uv run lint-imports
+
+  commit-messages:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check commit messages
+        run: |
+          for sha in $(git rev-list ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}); do
+            git log -1 --format=%B "$sha" > msg.txt
+            .githooks/commit-msg msg.txt || exit 1
+          done

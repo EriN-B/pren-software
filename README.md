@@ -43,3 +43,7 @@ uv run lint-imports         # check import rules
 ```
 
 CI (`.github/workflows/software-ci.yml`) runs the same checks on every push and pull request.
+
+## Contributing
+
+Branch, commit and PR rules: [CONTRIBUTING.md](CONTRIBUTING.md).

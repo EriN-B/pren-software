@@ -1,0 +1,17 @@
+#!/bin/sh
+# Checks the first line of a commit message against CONTRIBUTING.md.
+# Used as git hook (git config core.hooksPath .githooks) and in CI.
+header=$(head -n 1 "$1")
+pattern='^(feat|fix|docs|refactor|test|chore|ci|build|perf)(\((core|perception|recorder|sim|robot|models|ci|repo)\))?!?: [a-z].*[^.]$'
+
+case "$header" in Merge\ *|Revert\ *|fixup!\ *|squash!\ *) exit 0 ;; esac
+
+if ! echo "$header" | grep -Eq "$pattern"; then
+  echo "Bad commit message: $header" >&2
+  echo "Expected: <type>(<scope>): <summary>, e.g. 'feat(sim): add map loader'. See CONTRIBUTING.md." >&2
+  exit 1
+fi
+if [ ${#header} -gt 72 ]; then
+  echo "Commit header is ${#header} characters, max 72: $header" >&2
+  exit 1
+fi
