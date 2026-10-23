@@ -19,7 +19,7 @@ We use [Conventional Commits](https://www.conventionalcommits.org/):
 
 - **type**: `feat` new feature, `fix` bug fix, `docs`, `refactor`, `test`,
   `chore` maintenance, `ci`, `build` dependencies and packaging, `perf`
-- **scope** (optional): `core`, `perception`, `recorder`, `sim`, `robot`, `models`, `ci`, `repo`
+- **scope** (optional): `core`, `behavior`, `perception`, `recorder`, `sim`, `robot`, `models`, `ci`, `repo`
 - **summary**: imperative, lowercase, no full stop, header max 72 characters
 - `!` after type/scope marks a breaking change, e.g. `feat(core)!: rename Clock.now`
 
