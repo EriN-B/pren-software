@@ -1,0 +1,6 @@
+# Model files are not committed. Each entry says where to get the file.
+# - name: vosk-small-de
+#   file: vosk-model-small-de-0.15/
+#   url: https://alphacephei.com/vosk/models/vosk-model-small-de-0.15.zip
+#   sha256: <hash>
+models: []
