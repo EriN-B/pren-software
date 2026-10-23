@@ -1,6 +1,7 @@
 [importlinter]
 root_packages =
     dog_core
+    dog_behavior
     dog_perception
     dog_recorder
     dog_sim
@@ -13,6 +14,7 @@ type = forbidden
 source_modules = dog_core
 # shortcut: import-linter has no allow-list, so third-party packages are listed explicitly; extend when adding dependencies
 forbidden_modules =
+    dog_behavior
     dog_perception
     dog_recorder
     dog_sim
@@ -25,9 +27,10 @@ forbidden_modules =
     yaml
 
 [importlinter:contract:libs-only-core]
-name = perception and recorder import only dog_core
+name = behavior, perception and recorder import only dog_core
 type = forbidden
 source_modules =
+    dog_behavior
     dog_perception
     dog_recorder
 forbidden_modules =
@@ -35,9 +38,10 @@ forbidden_modules =
     dog_robot
 
 [importlinter:contract:libs-independent]
-name = perception and recorder are independent
+name = behavior, perception and recorder are independent
 type = independence
 modules =
+    dog_behavior
     dog_perception
     dog_recorder
 

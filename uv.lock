@@ -9,6 +9,7 @@ resolution-markers = [
 
 [manifest]
 members = [
+    "dog-behavior",
     "dog-core",
     "dog-perception",
     "dog-recorder",
@@ -451,6 +452,17 @@ wheels = [
 ]
 
 [[package]]
+name = "dog-behavior"
+version = "0.1.0"
+source = { editable = "packages/dog-behavior" }
+dependencies = [
+    { name = "dog-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "dog-core", editable = "packages/dog-core" }]
+
+[[package]]
 name = "dog-core"
 version = "0.1.0"
 source = { editable = "packages/dog-core" }
@@ -499,6 +511,7 @@ name = "dog-robot"
 version = "0.1.0"
 source = { editable = "apps/robot" }
 dependencies = [
+    { name = "dog-behavior" },
     { name = "dog-core" },
     { name = "dog-perception" },
     { name = "dog-recorder" },
@@ -506,6 +519,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "dog-behavior", editable = "packages/dog-behavior" },
     { name = "dog-core", editable = "packages/dog-core" },
     { name = "dog-perception", editable = "packages/dog-perception" },
     { name = "dog-recorder", editable = "packages/dog-recorder" },
@@ -516,6 +530,7 @@ name = "dog-sim"
 version = "0.1.0"
 source = { editable = "apps/sim" }
 dependencies = [
+    { name = "dog-behavior" },
     { name = "dog-core" },
     { name = "dog-perception" },
     { name = "dog-recorder" },
@@ -523,6 +538,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "dog-behavior", editable = "packages/dog-behavior" },
     { name = "dog-core", editable = "packages/dog-core" },
     { name = "dog-perception", editable = "packages/dog-perception" },
     { name = "dog-recorder", editable = "packages/dog-recorder" },
@@ -1516,6 +1532,7 @@ name = "pren-software"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "dog-behavior" },
     { name = "dog-core" },
     { name = "dog-perception" },
     { name = "dog-recorder" },
@@ -1532,6 +1549,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "dog-behavior", editable = "packages/dog-behavior" },
     { name = "dog-core", editable = "packages/dog-core" },
     { name = "dog-perception", editable = "packages/dog-perception" },
     { name = "dog-recorder", editable = "packages/dog-recorder" },
