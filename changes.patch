@@ -1,0 +1,17 @@
+diff --git a/.gitignore b/.gitignore
+index 63f4937..d0960a9 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -5,3 +5,4 @@ __pycache__/
+ .import_linter_cache/
+ models/*
+ !models/manifest.yaml
++*state_machine.png
+\ No newline at end of file
+diff --git a/packages/dog-core/src/dog_core/__init__.py b/packages/dog-core/src/dog_core/__init__.py
+deleted file mode 100644
+index 878889e..0000000
+--- a/packages/dog-core/src/dog_core/__init__.py
++++ /dev/null
+@@ -1 +0,0 @@
+-"""Shared messages, ports and clock. Standard library only."""
