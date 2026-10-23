@@ -1,0 +1,13 @@
+[project]
+name = "dog-recorder"
+version = "0.1.0"
+description = "Recording of sensor data."
+requires-python = ">=3.12"
+dependencies = ["dog-core"]
+
+[tool.uv.sources]
+dog-core = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.12,<0.13"]
+build-backend = "uv_build"

@@ -1,0 +1,26 @@
+[project]
+name = "pren-software"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = ["dog-core", "dog-perception", "dog-recorder", "dog-sim", "dog-robot"]
+
+[dependency-groups]
+dev = ["ruff", "pytest", "import-linter"]
+
+[tool.uv.workspace]
+members = ["packages/*", "apps/*"]
+
+[tool.uv.sources]
+dog-core = { workspace = true }
+dog-perception = { workspace = true }
+dog-recorder = { workspace = true }
+dog-sim = { workspace = true }
+dog-robot = { workspace = true }
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.pytest.ini_options]
+testpaths = ["packages", "apps"]
+# test files share names across packages
+addopts = "--import-mode=importlib"

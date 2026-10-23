@@ -1,0 +1,49 @@
+[importlinter]
+root_packages =
+    dog_core
+    dog_perception
+    dog_recorder
+    dog_sim
+    dog_robot
+include_external_packages = True
+
+[importlinter:contract:core-stdlib-only]
+name = dog_core imports only the standard library
+type = forbidden
+source_modules = dog_core
+# shortcut: import-linter has no allow-list, so third-party packages are listed explicitly; extend when adding dependencies
+forbidden_modules =
+    dog_perception
+    dog_recorder
+    dog_sim
+    dog_robot
+    vosk
+    mediapipe
+    ultralytics
+    numpy
+    cv2
+    yaml
+
+[importlinter:contract:libs-only-core]
+name = perception and recorder import only dog_core
+type = forbidden
+source_modules =
+    dog_perception
+    dog_recorder
+forbidden_modules =
+    dog_sim
+    dog_robot
+
+[importlinter:contract:libs-independent]
+name = perception and recorder are independent
+type = independence
+modules =
+    dog_perception
+    dog_recorder
+
+[importlinter:contract:apps-independent]
+name = apps do not import each other
+type = independence
+modules =
+    dog_sim
+    dog_robot
