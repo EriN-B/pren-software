@@ -11,6 +11,7 @@ import sounddevice as sd
 from dog_perception import GestureModel
 from dog_recorder import AudioModel
 import logging
+from dog_perception.enum_prediction_type import PredictionType
 
 class WaitingForCommand():
     def __init__(self):
@@ -32,7 +33,7 @@ class WaitingForCommand():
                 )
                 if audio_command and not self.stop_event.is_set():
                     self.stop_event.set()
-                    
+                    machine.shared.logger.info("Found audio command: " + audio_command.value)
                     machine.send(audio_command)
 
         def gesture_worker():
@@ -46,6 +47,7 @@ class WaitingForCommand():
                 )
                 if gesture_command and not self.stop_event.is_set():
                     self.stop_event.set()
+                    machine.shared.logger.info("Found gesture command: " + gesture_command.value)
                     machine.send(gesture_command)
 
         self.audio_thread = threading.Thread(target=audio_worker, daemon=True)
@@ -56,7 +58,6 @@ class WaitingForCommand():
 
 
     def listen_for_audio_command(self, mic: sd.RawInputStream, model: AudioModel, stop_event: threading.Event) -> str | None:
-        # TODO check if these are all possible commands
         commands = ["hier", "sitz", "platz", "auf", "such", "brav"]
 
         itr = model.get_transcription_stream(mic)
@@ -71,7 +72,7 @@ class WaitingForCommand():
 
 
     def look_for_gesture_command(self, logger: logging.Logger, camera: cv2.VideoCapture, model: GestureModel, stop_event: threading.Event) -> str | None:
-        commands = ["auf", "sitz", "platz"]
+        commands = [PredictionType.AUF, PredictionType.SITZ, PredictionType.PLATZ]
         start = time.monotonic()
         while not stop_event.is_set():
             success, frame = camera.read()
