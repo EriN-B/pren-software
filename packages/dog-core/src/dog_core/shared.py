@@ -3,6 +3,7 @@ import sounddevice as sd
 from dog_perception import GestureModel
 from dog_perception import ObjectModel
 from dog_recorder import AudioModel
+import logging
 
 class SharedContext:
     """Objects shared between states; add fields as needed."""
@@ -13,3 +14,4 @@ class SharedContext:
         self.audio_model: AudioModel | None
         self.object_model: ObjectModel | None
         self.path_to_here: object | None
+        self.logger: logging.Logger | None

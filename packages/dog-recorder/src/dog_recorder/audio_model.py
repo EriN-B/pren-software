@@ -5,7 +5,6 @@ from collections.abc import Iterator
 import sounddevice as sd
 from vosk import Model, KaldiRecognizer
 
-
 class AudioModel:
     def __init__(self):
         model_path = (

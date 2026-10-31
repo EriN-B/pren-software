@@ -5,6 +5,7 @@ import sounddevice as sd
 from dog_perception import GestureModel
 from dog_perception import ObjectModel
 from dog_recorder import AudioModel
+import logging
 
 if TYPE_CHECKING:
     from dog_core.machine import PrenMachine
@@ -16,8 +17,9 @@ def enter(machine: PrenMachine):
     machine.shared.audio_model = AudioModel()
     machine.shared.object_model = ObjectModel()
     machine.shared.path_to_here = None
+    machine.shared.logger = logging.getLogger()
     
     machine.wait_for_command()
 
 def exit(machine: PrenMachine):
-    pass
+    machine.shared.logger.info("Startup initialization successful")

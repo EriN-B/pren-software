@@ -1,7 +1,10 @@
 import mediapipe as mp
+from mediapipe.tasks.python.vision.hand_landmarker import HandLandmarker
 import cv2
 from pathlib import Path
 import joblib
+from sklearn.neighbors import KNeighborsClassifier
+from dog_perception.enum_prediction_type import PredictionType
 
 class GestureModel():
     def __init__(self):
@@ -13,16 +16,30 @@ class GestureModel():
             num_hands=1
         )
         
-        self.hand_model = (
+        self.hand_model: HandLandmarker = (
             mp.tasks.vision.HandLandmarker.create_from_options(options)
         )
-        self.knn = joblib.load(str(Path(__file__).parent / "knn_classifier_model/knn_model.pkl"))
+        self.knn: KNeighborsClassifier = joblib.load(str(Path(__file__).parent / "knn_classifier_model/knn_model.pkl"))
     
-    def get_gesture(self) -> str:
-        # Implement KNN Classifier
-        pass
+    def get_gesture(self, frame, timestamp_ms) -> str:
+        hand = self._get_hand(frame, timestamp_ms)
+        prediction = self.knn.predict()[0]
+
+        distances, _ = self.knn.kneighbors(hand)
+        mean_distance = distances[0].mean()
+
+        if mean_distance > 2.0:
+            return PredictionType.NONE
+        
+        match prediction:
+            case "auf":
+                return PredictionType.AUF
+            case "sitz":
+                return PredictionType.SITZ
+            case "platz":
+                return PredictionType.PLATZ
     
-    def _get_hands(self, frame, timestamp_ms: int):
+    def _get_hand(self, frame, timestamp_ms: int):
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         image = mp.Image(
