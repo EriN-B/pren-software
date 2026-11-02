@@ -16,12 +16,14 @@ from dog_perception.enum_prediction_type import PredictionType
 class WaitingForCommand():
     def __init__(self):
         self.stop_event = threading.Event()
+        self.command_semaphore = threading.Semaphore(1)
         self.audio_thread = None
         self.gesture_thread = None
         super().__init__()
 
     def enter(self, machine: PrenMachine):
         self.stop_event = threading.Event()
+        self.command_semaphore = threading.Semaphore(1)
         
         def audio_worker():
             while not self.stop_event.is_set():
@@ -31,9 +33,9 @@ class WaitingForCommand():
                     machine.shared.audio_model,
                     self.stop_event
                 )
-                if audio_command and not self.stop_event.is_set():
+                if audio_command and self.command_semaphore.acquire(blocking=False):
                     self.stop_event.set()
-                    machine.shared.logger.info("Found audio command: " + audio_command.value)
+                    machine.shared.logger.info("Audio command: " + audio_command)
                     machine.send(audio_command)
 
         def gesture_worker():
@@ -45,10 +47,10 @@ class WaitingForCommand():
                     machine.shared.gesture_model,
                     self.stop_event
                 )
-                if gesture_command and not self.stop_event.is_set():
+                if gesture_command and self.command_semaphore.acquire(blocking=False):
                     self.stop_event.set()
-                    machine.shared.logger.info("Found gesture command: " + gesture_command.value)
-                    machine.send(gesture_command)
+                    machine.shared.logger.info("Gesture command: %s", gesture_command)
+                    machine.send(gesture_command.value)
 
         self.audio_thread = threading.Thread(target=audio_worker, daemon=True)
         self.gesture_thread = threading.Thread(target=gesture_worker, daemon=True)

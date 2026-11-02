@@ -3,7 +3,10 @@ name = "dog-perception"
 version = "0.1.0"
 description = "Voice and gesture recognisers."
 requires-python = ">=3.12"
-dependencies = ["dog-core"]
+dependencies = [
+    "dog-core",
+    "pandas>=3.1.0",
+]
 
 [project.optional-dependencies]
 vosk = ["vosk"]

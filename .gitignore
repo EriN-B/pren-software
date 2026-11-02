@@ -6,3 +6,4 @@ __pycache__/
 models/*
 !models/manifest.yaml
 *state_machine.png
+.DS_Store

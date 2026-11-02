@@ -51,7 +51,7 @@ class PrenMachine(StateMachine):
         self.waiting_handler.enter(self)
 
     def on_exit_waiting_for_command(self):
-        self.waiting_handler.exit(self)
+        self.waiting_handler.exit()
 
     def on_enter_searching(self):
         searching.enter(self)
