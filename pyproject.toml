@@ -9,6 +9,8 @@ dev = ["ruff", "pytest", "import-linter"]
 
 [tool.uv.workspace]
 members = ["packages/*", "apps/*"]
+# the web simulator is a web app, not a Python package
+exclude = ["apps/dog-simulator"]
 
 [tool.uv.sources]
 dog-core = { workspace = true }
