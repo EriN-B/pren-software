@@ -30,7 +30,7 @@ Import rules (enforced by `.importlinter`):
 - the brain does not import `dog_protocol`; `dog_protocol` does not import the brain or the apps
 - apps do not import each other
 
-Decisions: [docs/adr/](docs/adr/).
+Concepts: [docs/concepts/](docs/concepts/) (architecture, simulator). Decisions: [docs/adr/](docs/adr/).
 
 ## Setup
 
