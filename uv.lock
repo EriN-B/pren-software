@@ -12,9 +12,10 @@ members = [
     "dog-behavior",
     "dog-core",
     "dog-perception",
+    "dog-protocol",
     "dog-recorder",
     "dog-robot",
-    "dog-sim",
+    "dog-sim-host",
     "pren-software",
 ]
 
@@ -496,6 +497,11 @@ requires-dist = [
 provides-extras = ["vosk", "mediapipe", "yolo"]
 
 [[package]]
+name = "dog-protocol"
+version = "0.1.0"
+source = { editable = "packages/dog-protocol" }
+
+[[package]]
 name = "dog-recorder"
 version = "0.1.0"
 source = { editable = "packages/dog-recorder" }
@@ -526,13 +532,14 @@ requires-dist = [
 ]
 
 [[package]]
-name = "dog-sim"
+name = "dog-sim-host"
 version = "0.1.0"
-source = { editable = "apps/sim" }
+source = { editable = "apps/sim-host" }
 dependencies = [
     { name = "dog-behavior" },
     { name = "dog-core" },
     { name = "dog-perception" },
+    { name = "dog-protocol" },
     { name = "dog-recorder" },
 ]
 
@@ -541,6 +548,7 @@ requires-dist = [
     { name = "dog-behavior", editable = "packages/dog-behavior" },
     { name = "dog-core", editable = "packages/dog-core" },
     { name = "dog-perception", editable = "packages/dog-perception" },
+    { name = "dog-protocol", editable = "packages/dog-protocol" },
     { name = "dog-recorder", editable = "packages/dog-recorder" },
 ]
 
@@ -1535,9 +1543,10 @@ dependencies = [
     { name = "dog-behavior" },
     { name = "dog-core" },
     { name = "dog-perception" },
+    { name = "dog-protocol" },
     { name = "dog-recorder" },
     { name = "dog-robot" },
-    { name = "dog-sim" },
+    { name = "dog-sim-host" },
 ]
 
 [package.dev-dependencies]
@@ -1552,9 +1561,10 @@ requires-dist = [
     { name = "dog-behavior", editable = "packages/dog-behavior" },
     { name = "dog-core", editable = "packages/dog-core" },
     { name = "dog-perception", editable = "packages/dog-perception" },
+    { name = "dog-protocol", editable = "packages/dog-protocol" },
     { name = "dog-recorder", editable = "packages/dog-recorder" },
     { name = "dog-robot", editable = "apps/robot" },
-    { name = "dog-sim", editable = "apps/sim" },
+    { name = "dog-sim-host", editable = "apps/sim-host" },
 ]
 
 [package.metadata.requires-dev]

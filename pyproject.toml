@@ -2,7 +2,7 @@
 name = "pren-software"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = ["dog-core", "dog-behavior", "dog-perception", "dog-recorder", "dog-sim", "dog-robot"]
+dependencies = ["dog-core", "dog-behavior", "dog-perception", "dog-recorder", "dog-protocol", "dog-sim-host", "dog-robot"]
 
 [dependency-groups]
 dev = ["ruff", "pytest", "import-linter"]
@@ -15,7 +15,8 @@ dog-core = { workspace = true }
 dog-behavior = { workspace = true }
 dog-perception = { workspace = true }
 dog-recorder = { workspace = true }
-dog-sim = { workspace = true }
+dog-protocol = { workspace = true }
+dog-sim-host = { workspace = true }
 dog-robot = { workspace = true }
 
 [tool.ruff]

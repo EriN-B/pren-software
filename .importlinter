@@ -4,7 +4,8 @@ root_packages =
     dog_behavior
     dog_perception
     dog_recorder
-    dog_sim
+    dog_protocol
+    dog_sim_host
     dog_robot
 include_external_packages = True
 
@@ -17,7 +18,8 @@ forbidden_modules =
     dog_behavior
     dog_perception
     dog_recorder
-    dog_sim
+    dog_protocol
+    dog_sim_host
     dog_robot
     vosk
     mediapipe
@@ -34,7 +36,8 @@ source_modules =
     dog_perception
     dog_recorder
 forbidden_modules =
-    dog_sim
+    dog_protocol
+    dog_sim_host
     dog_robot
 
 [importlinter:contract:libs-independent]
@@ -45,9 +48,21 @@ modules =
     dog_perception
     dog_recorder
 
+[importlinter:contract:protocol-standalone]
+name = dog_protocol does not import the brain or the apps
+type = forbidden
+source_modules = dog_protocol
+forbidden_modules =
+    dog_core
+    dog_behavior
+    dog_perception
+    dog_recorder
+    dog_sim_host
+    dog_robot
+
 [importlinter:contract:apps-independent]
 name = apps do not import each other
 type = independence
 modules =
-    dog_sim
+    dog_sim_host
     dog_robot

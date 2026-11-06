@@ -1,15 +1,16 @@
 [project]
-name = "dog-sim"
+name = "dog-sim-host"
 version = "0.1.0"
-description = "2D simulator (placeholder)."
+description = "Simulator host: runs the dog's brain with the simulator adapter; the web simulator connects to it."
 requires-python = ">=3.12"
-dependencies = ["dog-core", "dog-behavior", "dog-perception", "dog-recorder"]
+dependencies = ["dog-core", "dog-behavior", "dog-perception", "dog-recorder", "dog-protocol"]
 
 [tool.uv.sources]
 dog-core = { workspace = true }
 dog-behavior = { workspace = true }
 dog-perception = { workspace = true }
 dog-recorder = { workspace = true }
+dog-protocol = { workspace = true }
 
 [build-system]
 requires = ["uv_build>=0.12,<0.13"]
