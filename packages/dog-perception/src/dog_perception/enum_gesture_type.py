@@ -1,6 +1,6 @@
 from enum import Enum
 
-class PredictionType(Enum):
+class GestureType(Enum):
     AUF = "auf"
     SITZ = "sitz"
     PLATZ = "platz"

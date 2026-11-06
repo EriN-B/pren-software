@@ -16,6 +16,6 @@ def main():
 
 if __name__ == "__main__":
     if input("Generate image? [y/n]: ").strip().lower() == "y":
-                DotGraphMachine(PrenMachine)().write_png("packages/dog-core/src/dog_core/state_machine.png")
+        DotGraphMachine(PrenMachine)().write_png("packages/dog-core/src/dog_core/state_machine.png")
     else:
         main()

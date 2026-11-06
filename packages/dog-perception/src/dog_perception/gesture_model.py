@@ -4,7 +4,7 @@ import cv2
 from pathlib import Path
 import joblib
 from sklearn.neighbors import KNeighborsClassifier
-from dog_perception.enum_prediction_type import PredictionType
+from dog_perception.enum_gesture_type import GestureType
 import pandas as pd
 import numpy as np
 
@@ -23,7 +23,7 @@ class GestureModel():
         )
         self.knn: KNeighborsClassifier = joblib.load(str(Path(__file__).parent / "knn_classifier_model/knn_model.pkl"))
     
-    def get_gesture(self, frame, timestamp_ms) -> PredictionType | None:
+    def get_gesture(self, frame, timestamp_ms) -> GestureType | None:
         frame = cv2.flip(frame, 1)
         hand: HandLandmarkerResult = self._get_hand(frame, timestamp_ms)
         
@@ -32,21 +32,18 @@ class GestureModel():
         
         features = self._create_features(hand, frame)
         
-        prediction = self.knn.predict(features)[0]
+        distances, indices = self.knn.kneighbors(features)
 
-        distances, _ = self.knn.kneighbors(features)
-        mean_distance = distances[0].mean()
+        labels = self.knn._y[indices[0]]
+        confidences = np.bincount(labels)
 
-        if mean_distance > 2.0:
-            return PredictionType.NONE
-        
-        match prediction:
-            case "auf":
-                return PredictionType.AUF
-            case "sitz":
-                return PredictionType.SITZ
-            case "platz":
-                return PredictionType.PLATZ
+        confidence = confidences.max() / len(labels)
+
+        if distances[0].mean() > 2.0 or confidence < 0.8:
+            return GestureType.NONE
+
+        winner = confidences.argmax()
+        return GestureType(self.knn.classes_[winner])
     
     def _get_hand(self, frame, timestamp_ms: int):
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)

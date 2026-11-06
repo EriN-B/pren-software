@@ -12,7 +12,12 @@ if TYPE_CHECKING:
     from dog_core.machine import PrenMachine
     
 def enter(machine: PrenMachine):
-    machine.shared.camera = cv2.VideoCapture(1)
+    machine.shared.camera = cv2.VideoCapture(0)
+    if not machine.shared.camera.isOpened():
+        machine.shared.camera.release()
+        raise RuntimeError(
+            "Could not open camera 0. Check camera availability and camera permissions."
+        )
     machine.shared.microphone = sd.RawInputStream(samplerate=16000, blocksize=4000, dtype="int16", channels=1)
     machine.shared.audio_model = AudioModel()
     machine.shared.gesture_model = GestureModel()
@@ -32,7 +37,6 @@ def enter(machine: PrenMachine):
         logger.addHandler(handler)
 
     machine.shared.logger = logger
-    
     
     machine.wait_for_command()
 

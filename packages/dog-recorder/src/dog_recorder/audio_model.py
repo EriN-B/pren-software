@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 from collections.abc import Iterator
-
+import logging
 import sounddevice as sd
 from vosk import Model, KaldiRecognizer
 
@@ -18,7 +18,8 @@ class AudioModel:
 
     def get_transcription_stream(
         self,
-        microphone: sd.RawInputStream
+        microphone: sd.RawInputStream,
+        logger: logging.Logger
     ) -> Iterator[str]:
 
         recognizer = KaldiRecognizer(
@@ -28,14 +29,26 @@ class AudioModel:
 
         self.shouldStream = True
 
+        commands = {"hier", "sitz", "platz", "auf", "such", "brav"}
+
         while microphone.active and self.shouldStream:
-            data, _ = microphone.read(4000)
+            data, overflowed = microphone.read(4000)
 
             if recognizer.AcceptWaveform(bytes(data)):
-                text = json.loads(recognizer.Result())["text"]
+                text = json.loads(recognizer.Result()).get("text", "").strip()
 
                 if text:
+                    logger.info(f"FINAL: {text!r}")
                     yield text
+
+            else:
+                partial = json.loads(
+                    recognizer.PartialResult()
+                ).get("partial", "").strip().casefold()
+
+                if partial in commands:
+                    logger.info(f"PARTIAL COMMAND: {partial!r}")
+                    yield partial
                     
     def stop_transcription_stream(self):
         self.shouldStream = False
