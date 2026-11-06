@@ -6,6 +6,7 @@ Software for our autonomous dog robot (HSLU PREN HS26/FS27): voice and gesture r
 ```
 packages/
   dog-core/        dog_core        messages, ports, clock (standard library only)
+  dog-behavior/    dog_behavior    behaviour state machine (depends on dog_core)
   dog-perception/  dog_perception  recognisers (depends on dog_core)
   dog-recorder/    dog_recorder    recording (depends on dog_core)
 apps/
@@ -16,7 +17,7 @@ models/            model files (gitignored), listed in manifest.yaml
 
 Import rules (enforced by `.importlinter`):
 - `dog_core` imports only the standard library
-- `dog_perception` and `dog_recorder` import only `dog_core`, not each other
+- `dog_behavior`, `dog_perception` and `dog_recorder` import only `dog_core`, not each other
 - apps do not import each other
 
 ## Setup
