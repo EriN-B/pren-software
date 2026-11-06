@@ -5,4 +5,6 @@ without hardware. It never contains the brain; it connects to `apps/sim-host`.
 
 Concept: *dog-simulator: Simulator Concept* (Claude project).
 
-Status: not started. Technology and folder layout are added with the first implementation.
+Technology: React, Three.js through React Three Fiber, TypeScript, Vite ([ADR 2](../../docs/adr/0002-react-three-fiber-simulator.md)).
+
+Status: not started. The folder layout is added with the first implementation.

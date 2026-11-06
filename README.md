@@ -15,7 +15,7 @@ packages/
 apps/
   robot/           dog_robot       runs on the robot: brain + hardware adapters
   sim-host/        dog_sim_host    runs on the laptop: brain + simulator adapter
-  dog-simulator/                   web 3D simulator (not started)
+  dog-simulator/                   web 3D simulator, React + Three.js (not started)
 scenarios/         scenario files for the simulator and tests
 config/            settings per run mode
 models/            model files (gitignored), listed in manifest.yaml

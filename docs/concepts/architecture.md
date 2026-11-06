@@ -119,7 +119,7 @@ dog-core runs as its own program and the simulator connects to it. How they conn
 3. **Live view (optional, PREN2):** the simulator mirrors the real robot during testing. The robot never needs it; off at the competition.
 4. **Replay:** the simulator plays back a recorded run.
 
-**To be done:** connection technology, simulator technology, packaging and installation on the Pi.
+**To be done:** connection technology, packaging and installation on the Pi.
 
 ## What has to be done where
 
@@ -147,8 +147,8 @@ Everything is still to be done. The goal for MS3 (04.12.2026) is one complete se
 
 **To be decided later (implementation)**
 
-- Simulator technology (3D engine, language)
-- Connection and data format between the two
+- Simulator technology: decided, React with Three.js through React Three Fiber (see [simulator.md](simulator.md))
+- Connection and data format between the two (proposed: WebSocket, JSON plus binary, Pydantic models with generated TypeScript types)
 - Recording format and viewer (candidates: Rerun or Foxglove; Rerun could also be embedded in the simulator as its replay viewer)
 - Packaging and installation on the Pi (repo structure: done, see the repo README)
 - Testing approach

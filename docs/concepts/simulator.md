@@ -125,6 +125,25 @@ At MS3 the simulator supports four kinds of scenario. Each sets up the scene, ru
 
 **To be done:** the dog's defined reaction to each failure case, how scenarios are described and saved (`scenarios/`), how pass and fail are shown.
 
+## Technology
+
+The simulator is a React web app with Three.js, through React Three Fiber, in TypeScript. The rest is a proposal to confirm when implementing.
+
+| Concern | Choice | Status |
+| --- | --- | --- |
+| UI and 3D | React; Three.js through React Three Fiber, with drei helpers (drag handles for placing, camera controls); TypeScript; Vite | Decided |
+| Movement | Own simple motion model with a fixed time step; no physics engine | Proposed |
+| Simulation state | One small shared store (e.g. Zustand) for scene, UI and connection | Proposed |
+| Dog's-eye view | Second camera rendered off-screen, sent as compressed images | Proposed |
+| Webcam and microphone | Captured in the browser, so the simulator can switch cameras itself | Proposed |
+| Connection to the sim host | WebSocket; JSON for state and commands, binary for images and audio | Proposed |
+| Data definition | Pydantic models in dog-protocol; TypeScript types generated from them | Proposed |
+| Scenarios | YAML or JSON files in scenarios/, checked against a schema | Proposed |
+| Replay viewer (PREN2) | Rerun web viewer, embedded | Candidate |
+| Tests | Vitest for simulator logic; one Playwright smoke test | Proposed |
+
+**Not used:** game engines with a web export (Unity, Godot), a physics engine, running the brain in the browser.
+
 ## Scope and open questions
 
 MS3 (04.12.2026) delivers one complete run first, then real commands, then a presentable scene. Everything else moves to PREN2.
