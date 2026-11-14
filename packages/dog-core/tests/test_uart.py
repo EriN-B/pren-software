@@ -17,7 +17,6 @@ from dog_core.states import (
     found,
     perform_auf,
     perform_brav,
-    perform_hier,
     platz,
     sitz,
 )
@@ -357,7 +356,7 @@ def test_protocol_can_be_replaced_with_binary_without_changing_movement_calls(
         (perform_auf, ["auf"], "idle"),
         (perform_brav, ["brav"], "idle"),
         (auf_before_such, ["auf"], "searching"),
-        (auf_before_hier, ["auf"], "idle"),
+        (auf_before_hier, ["auf"], "hier"),
         (auf_before_brav, ["auf", "brav"], "idle"),
         (found, ["signal_found"], "return"),
     ],
@@ -374,7 +373,7 @@ def test_states_send_commands_before_continuing(
         return_back=Mock(),
     )
     machine.go_to_perform_brav = lambda: perform_brav.enter(machine)
-    machine.go_to_perform_hier = lambda: perform_hier.enter(machine)
+    machine.go_to_perform_hier = Mock()
 
     def commands_received(*args):
         assert select.select([master], [], [], 1)[0]
@@ -387,6 +386,7 @@ def test_states_send_commands_before_continuing(
         "recognition": machine.command_recognition.start,
         "idle": machine.go_to_standing_idle,
         "searching": machine.go_to_searching,
+        "hier": machine.go_to_perform_hier,
         "return": machine.return_back,
     }[continuation]
     callback.side_effect = commands_received
