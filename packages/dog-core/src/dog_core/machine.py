@@ -1,44 +1,69 @@
 from dog_core.shared import SharedContext
-from dog_core.states import waiting_for_command, found, perform_auf, perform_hier, perform_platz, returning, searching, startup, perform_sitz, perform_brav
-from statemachine import State, StateMachine
+from dog_core.command_recognition import CommandRecognition
+from dog_core.states import standing_idle, found, perform_auf, perform_hier, platz, returning, searching, startup, sitz, perform_brav, auf_before_such, auf_before_brav, auf_before_hier
+from statemachine import Event, State, StateMachine
 
 
 class PrenMachine(StateMachine):
+    allow_event_without_transition = True
+
     startup = State(initial=True)
-    waiting_for_command = State()
+    standing_idle = State()
     searching = State()
     found = State()
     returning = State()
     perform_hier = State()
-    perform_platz = State()
+    platz = State()
     perform_auf = State()
-    perform_sitz = State()
+    sitz = State()
     perform_brav = State()
+    auf_before_such = State()
+    auf_before_brav = State()
+    auf_before_hier = State()
 
-    wait_for_command = startup.to(waiting_for_command)
-
-    such = waiting_for_command.to(searching)
+    such = (
+        standing_idle.to(searching)
+        | sitz.to(auf_before_such)
+        | platz.to(auf_before_such)
+    )
     signal = searching.to(found)
     return_back = found.to(returning)
-    returned = returning.to(waiting_for_command)
+    returned = returning.to(standing_idle)
 
-    hier = waiting_for_command.to(perform_hier)
-    sitz = waiting_for_command.to(perform_sitz)
-    platz = waiting_for_command.to(perform_platz)
-    auf = waiting_for_command.to(perform_auf)
-    brav = waiting_for_command.to(perform_brav)
-
-    command_finished = (
-        perform_hier.to(waiting_for_command)
-        | perform_platz.to(waiting_for_command)
-        | perform_auf.to(waiting_for_command)
-        | perform_sitz.to(waiting_for_command)
-        | perform_brav.to(waiting_for_command)
+    hier = (
+        standing_idle.to(perform_hier)
+        | sitz.to(auf_before_hier)
+        | platz.to(auf_before_hier)
     )
+    command_sitz = Event(
+        standing_idle.to(sitz) | platz.to(sitz), id="sitz", name="Sitz"
+    )
+    command_platz = Event(
+        standing_idle.to(platz) | sitz.to(platz), id="platz", name="Platz"
+    )
+    auf = (
+        sitz.to(perform_auf)
+        | platz.to(perform_auf)
+    )
+    brav = (
+        standing_idle.to(perform_brav)
+        | sitz.to(auf_before_brav)
+        | platz.to(auf_before_brav)
+    )
+
+    go_to_standing_idle = (
+        startup.to(standing_idle)
+        | perform_hier.to(standing_idle)
+        | perform_auf.to(standing_idle)
+        | perform_brav.to(standing_idle)
+    )
+    go_to_searching = auf_before_such.to(searching)
+    go_to_perform_brav = auf_before_brav.to(perform_brav)
+    go_to_perform_hier = auf_before_hier.to(perform_hier)
     
     def __init__(self):
         self.shared = SharedContext()
-        self.waiting_handler = waiting_for_command.WaitingForCommand()
+        self.command_recognition = CommandRecognition()
         super().__init__()
 
     def on_enter_startup(self):
@@ -47,11 +72,11 @@ class PrenMachine(StateMachine):
     def on_exit_startup(self):
         startup.exit(self)
 
-    def on_enter_waiting_for_command(self):
-        self.waiting_handler.enter(self)
+    def on_enter_standing_idle(self):
+        standing_idle.enter(self)
 
-    def on_exit_waiting_for_command(self):
-        self.waiting_handler.exit()
+    def on_exit_standing_idle(self):
+        standing_idle.exit(self)
 
     def on_enter_searching(self):
         searching.enter(self)
@@ -75,25 +100,43 @@ class PrenMachine(StateMachine):
         perform_hier.enter(self)
 
     def on_exit_perform_hier(self):
-        perform_sitz.exit(self)
-
-    def on_enter_perform_sitz(self):
-        perform_sitz.enter(self)
-
-    def on_exit_perform_sitz(self):
         perform_hier.exit(self)
 
-    def on_enter_perform_platz(self):
-        perform_platz.enter(self)
+    def on_enter_sitz(self):
+        sitz.enter(self)
 
-    def on_exit_perform_platz(self):
-        perform_platz.exit(self)
+    def on_exit_sitz(self):
+        sitz.exit(self)
+
+    def on_enter_platz(self):
+        platz.enter(self)
+
+    def on_exit_platz(self):
+        platz.exit(self)
 
     def on_enter_perform_auf(self):
         perform_auf.enter(self)
 
     def on_exit_perform_auf(self):
         perform_auf.exit(self)
+
+    def on_enter_auf_before_such(self):
+        auf_before_such.enter(self)
+
+    def on_exit_auf_before_such(self):
+        auf_before_such.exit(self)
+
+    def on_enter_auf_before_brav(self):
+        auf_before_brav.enter(self)
+
+    def on_exit_auf_before_brav(self):
+        auf_before_brav.exit(self)
+
+    def on_enter_auf_before_hier(self):
+        auf_before_hier.enter(self)
+
+    def on_exit_auf_before_hier(self):
+        auf_before_hier.exit(self)
 
     def on_enter_perform_brav(self):
         perform_brav.enter(self)

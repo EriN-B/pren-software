@@ -38,7 +38,7 @@ def enter(machine: PrenMachine):
 
     machine.shared.logger = logger
     
-    machine.wait_for_command()
+    machine.go_to_standing_idle()
 
 def exit(machine: PrenMachine):
     machine.shared.logger.info("Startup initialization successful")
