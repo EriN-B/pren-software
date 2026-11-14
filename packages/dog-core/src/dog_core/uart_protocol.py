@@ -39,6 +39,10 @@ class UartProtocol(Protocol):
         """Encode the praise/reward command."""
         ...
 
+    def encode_signal_found(self) -> bytes:
+        """Encode the signal that the bone has been found."""
+        ...
+
 
 class JsonUartProtocol:
     """Temporary readable protocol: one ASCII JSON object per line."""
@@ -71,3 +75,6 @@ class JsonUartProtocol:
 
     def encode_brav(self) -> bytes:
         return self._encode("brav")
+
+    def encode_signal_found(self) -> bytes:
+        return self._encode("signal_found")

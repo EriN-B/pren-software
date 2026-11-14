@@ -14,6 +14,7 @@ from dog_core.states import (
     auf_before_brav,
     auf_before_hier,
     auf_before_such,
+    found,
     perform_auf,
     perform_brav,
     perform_hier,
@@ -215,6 +216,7 @@ def test_read_uses_one_deadline_for_all_fragments(serial_pair):
         ("platz", (), {"command": "platz"}),
         ("auf", (), {"command": "auf"}),
         ("brav", (), {"command": "brav"}),
+        ("signal_found", (), {"command": "signal_found"}),
     ],
 )
 def test_movement_commands_are_newline_delimited_json(
@@ -279,6 +281,7 @@ def test_multiple_commands_preserve_message_boundaries(serial_pair):
         ("platz", ()),
         ("auf", ()),
         ("brav", ()),
+        ("signal_found", ()),
     ],
 )
 def test_movement_commands_require_open_port(method, arguments):
@@ -321,6 +324,9 @@ def test_protocol_can_be_replaced_with_binary_without_changing_movement_calls(
         def encode_brav(self) -> bytes:
             return b"\x07"
 
+        def encode_signal_found(self) -> bytes:
+            return b"\x08"
+
     master, slave, _ = serial_pair
     with Uart(os.ttyname(slave), protocol=BinaryProtocol()) as uart:
         uart.rotate(180)
@@ -330,6 +336,7 @@ def test_protocol_can_be_replaced_with_binary_without_changing_movement_calls(
         uart.platz()
         uart.auf()
         uart.brav()
+        uart.signal_found()
         assert select.select([master], [], [], 1)[0]
         # No JSON or newline may be added by the UART transport.
         assert os.read(master, 1024) == (
@@ -338,7 +345,7 @@ def test_protocol_can_be_replaced_with_binary_without_changing_movement_calls(
             + b"\x02"
             + struct.pack("<ff", 2.5, -15)
             + b"\x03"
-            + b"\x04\x05\x06\x07"
+            + b"\x04\x05\x06\x07\x08"
         )
 
 
@@ -352,6 +359,7 @@ def test_protocol_can_be_replaced_with_binary_without_changing_movement_calls(
         (auf_before_such, ["auf"], "searching"),
         (auf_before_hier, ["auf"], "idle"),
         (auf_before_brav, ["auf", "brav"], "idle"),
+        (found, ["signal_found"], "return"),
     ],
 )
 def test_states_send_commands_before_continuing(
@@ -363,6 +371,7 @@ def test_states_send_commands_before_continuing(
         command_recognition=Mock(),
         go_to_standing_idle=Mock(),
         go_to_searching=Mock(),
+        return_back=Mock(),
     )
     machine.go_to_perform_brav = lambda: perform_brav.enter(machine)
     machine.go_to_perform_hier = lambda: perform_hier.enter(machine)
@@ -378,6 +387,7 @@ def test_states_send_commands_before_continuing(
         "recognition": machine.command_recognition.start,
         "idle": machine.go_to_standing_idle,
         "searching": machine.go_to_searching,
+        "return": machine.return_back,
     }[continuation]
     callback.side_effect = commands_received
     with uart:

@@ -153,6 +153,10 @@ class Uart:
         """Queue the brav command without waiting for completion."""
         self._write(self._protocol.encode_brav())
 
+    def signal_found(self) -> None:
+        """Queue the bone-found signal without waiting for completion."""
+        self._write(self._protocol.encode_signal_found())
+
     def _read(self, size: int = 1) -> bytes:
         """Read up to ``size`` bytes within one overall read timeout.
 
