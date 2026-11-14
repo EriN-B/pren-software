@@ -137,6 +137,22 @@ class Uart:
         """Request that the Pico stop both driving and rotation."""
         self._write(self._protocol.encode_stop())
 
+    def sitz(self) -> None:
+        """Queue the sit command without waiting for completion."""
+        self._write(self._protocol.encode_sitz())
+
+    def platz(self) -> None:
+        """Queue the lie-down command without waiting for completion."""
+        self._write(self._protocol.encode_platz())
+
+    def auf(self) -> None:
+        """Queue the stand-up command without waiting for completion."""
+        self._write(self._protocol.encode_auf())
+
+    def brav(self) -> None:
+        """Queue the brav command without waiting for completion."""
+        self._write(self._protocol.encode_brav())
+
     def _read(self, size: int = 1) -> bytes:
         """Read up to ``size`` bytes within one overall read timeout.
 

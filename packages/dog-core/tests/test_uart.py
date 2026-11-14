@@ -6,9 +6,20 @@ import select
 import struct
 import termios
 from concurrent.futures import ThreadPoolExecutor
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 import pytest
+from dog_core.states import (
+    auf_before_brav,
+    auf_before_hier,
+    auf_before_such,
+    perform_auf,
+    perform_brav,
+    perform_hier,
+    platz,
+    sitz,
+)
 from dog_core.uart import Uart
 
 
@@ -200,6 +211,10 @@ def test_read_uses_one_deadline_for_all_fragments(serial_pair):
         ("drive", (-2.5,), {"command": "drive", "speed": -2.5, "angle": 0}),
         ("drive", (0,), {"command": "drive", "speed": 0, "angle": 0}),
         ("stop", (), {"command": "stop"}),
+        ("sitz", (), {"command": "sitz"}),
+        ("platz", (), {"command": "platz"}),
+        ("auf", (), {"command": "auf"}),
+        ("brav", (), {"command": "brav"}),
     ],
 )
 def test_movement_commands_are_newline_delimited_json(
@@ -256,7 +271,15 @@ def test_multiple_commands_preserve_message_boundaries(serial_pair):
 
 @pytest.mark.parametrize(
     ("method", "arguments"),
-    [("rotate", (180,)), ("drive", (0.5,)), ("stop", ())],
+    [
+        ("rotate", (180,)),
+        ("drive", (0.5,)),
+        ("stop", ()),
+        ("sitz", ()),
+        ("platz", ()),
+        ("auf", ()),
+        ("brav", ()),
+    ],
 )
 def test_movement_commands_require_open_port(method, arguments):
     with pytest.raises(RuntimeError, match="closed"):
@@ -286,11 +309,27 @@ def test_protocol_can_be_replaced_with_binary_without_changing_movement_calls(
         def encode_stop(self) -> bytes:
             return b"\x03"
 
+        def encode_sitz(self) -> bytes:
+            return b"\x04"
+
+        def encode_platz(self) -> bytes:
+            return b"\x05"
+
+        def encode_auf(self) -> bytes:
+            return b"\x06"
+
+        def encode_brav(self) -> bytes:
+            return b"\x07"
+
     master, slave, _ = serial_pair
     with Uart(os.ttyname(slave), protocol=BinaryProtocol()) as uart:
         uart.rotate(180)
         uart.drive(2.5, -15)
         uart.stop()
+        uart.sitz()
+        uart.platz()
+        uart.auf()
+        uart.brav()
         assert select.select([master], [], [], 1)[0]
         # No JSON or newline may be added by the UART transport.
         assert os.read(master, 1024) == (
@@ -299,4 +338,48 @@ def test_protocol_can_be_replaced_with_binary_without_changing_movement_calls(
             + b"\x02"
             + struct.pack("<ff", 2.5, -15)
             + b"\x03"
+            + b"\x04\x05\x06\x07"
         )
+
+
+@pytest.mark.parametrize(
+    ("state", "expected", "continuation"),
+    [
+        (sitz, ["sitz"], "recognition"),
+        (platz, ["platz"], "recognition"),
+        (perform_auf, ["auf"], "idle"),
+        (perform_brav, ["brav"], "idle"),
+        (auf_before_such, ["auf"], "searching"),
+        (auf_before_hier, ["auf"], "idle"),
+        (auf_before_brav, ["auf", "brav"], "idle"),
+    ],
+)
+def test_states_send_commands_before_continuing(
+    serial_pair, state, expected, continuation
+):
+    master, _, uart = serial_pair
+    machine = SimpleNamespace(
+        shared=SimpleNamespace(uart=uart, logger=Mock()),
+        command_recognition=Mock(),
+        go_to_standing_idle=Mock(),
+        go_to_searching=Mock(),
+    )
+    machine.go_to_perform_brav = lambda: perform_brav.enter(machine)
+    machine.go_to_perform_hier = lambda: perform_hier.enter(machine)
+
+    def commands_received(*args):
+        assert select.select([master], [], [], 1)[0]
+        messages = os.read(master, 4096).splitlines()
+        assert [json.loads(message) for message in messages] == [
+            {"command": command} for command in expected
+        ]
+
+    callback = {
+        "recognition": machine.command_recognition.start,
+        "idle": machine.go_to_standing_idle,
+        "searching": machine.go_to_searching,
+    }[continuation]
+    callback.side_effect = commands_received
+    with uart:
+        state.enter(machine)
+    callback.assert_called_once()

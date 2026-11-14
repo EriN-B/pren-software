@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -12,7 +13,7 @@ def enter(machine: PrenMachine) -> None:
 
 
 def stand_up(machine: PrenMachine) -> None:
-    pass
+    machine.shared.uart.auf()
 
 
 def exit(machine: PrenMachine) -> None:

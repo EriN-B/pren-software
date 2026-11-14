@@ -23,6 +23,22 @@ class UartProtocol(Protocol):
         """Encode a request to stop driving and rotation."""
         ...
 
+    def encode_sitz(self) -> bytes:
+        """Encode the sit command."""
+        ...
+
+    def encode_platz(self) -> bytes:
+        """Encode the lie-down command."""
+        ...
+
+    def encode_auf(self) -> bytes:
+        """Encode the stand-up command."""
+        ...
+
+    def encode_brav(self) -> bytes:
+        """Encode the praise/reward command."""
+        ...
+
 
 class JsonUartProtocol:
     """Temporary readable protocol: one ASCII JSON object per line."""
@@ -43,3 +59,15 @@ class JsonUartProtocol:
 
     def encode_stop(self) -> bytes:
         return self._encode("stop")
+
+    def encode_sitz(self) -> bytes:
+        return self._encode("sitz")
+
+    def encode_platz(self) -> bytes:
+        return self._encode("platz")
+
+    def encode_auf(self) -> bytes:
+        return self._encode("auf")
+
+    def encode_brav(self) -> bytes:
+        return self._encode("brav")
