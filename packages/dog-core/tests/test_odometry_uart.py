@@ -47,6 +47,19 @@ def wait_for(predicate):
         time.sleep(0.005)
 
 
+def test_require_odometry_needs_active_recording_and_fresh_baseline(connection):
+    master, uart, path = connection
+    with pytest.raises(RuntimeError, match="recording has not started"):
+        uart.require_odometry()
+    uart.start_path_recording(path)
+    with pytest.raises(RuntimeError, match="odometry"):
+        uart.require_odometry()
+    os.write(master, message(0, 0))
+    assert path.wait_until_initialized(1)
+    uart.require_odometry()
+    assert not select.select([master], [], [], 0)[0]
+
+
 def test_sensor_data_updates_path_without_any_state_or_camera_loop(connection):
     master, uart, path = connection
     uart.start_path_recording(path)
@@ -132,6 +145,8 @@ def test_telemetry_loss_after_moving_stops_and_latches_fault():
             assert json.loads(os.read(master, 4096))["command"] == "stop"
             with pytest.raises(RuntimeError):
                 uart.rotate(180)
+            with pytest.raises(RuntimeError):
+                uart.require_odometry()
             # A late message cannot silently resume tracking after a gap.
             os.write(master, message(1, 1))
             with pytest.raises(RuntimeError):

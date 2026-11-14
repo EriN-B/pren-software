@@ -243,6 +243,13 @@ class Uart:
                 self._odometry_error or "No fresh odometry; movement refused"
             )
 
+    def require_odometry(self) -> None:
+        """Require healthy path recording, including while waiting for a turn."""
+        with self._write_lock:
+            if self._path is None:
+                raise RuntimeError("Path recording has not started")
+            self._require_odometry()
+
     def _require_open(self) -> int:
         if self._fd is None:
             raise RuntimeError("UART is closed; call open() first")
