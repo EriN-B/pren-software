@@ -1,0 +1,67 @@
+# Project documentation. Preview: uv run --group docs mkdocs serve
+site_name: PREN Dog Software
+site_description: Software for the HSLU PREN dog robot and its simulator
+repo_url: https://github.com/EriN-B/pren-software
+edit_uri: edit/develop/docs/
+exclude_docs: |
+  agents/
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.highlight
+  palette:
+    - scheme: slate
+      primary: blue grey
+      accent: light blue
+      toggle: { icon: material/brightness-4, name: Light mode }
+    - scheme: default
+      primary: blue grey
+      accent: light blue
+      toggle: { icon: material/brightness-7, name: Dark mode }
+
+nav:
+  - Home: index.md
+  - Simulator:
+      - Overview: simulator/index.md
+      - Robot model: simulator/robot-model.md
+      - Pico emulator: simulator/pico-emulator.md
+      - Core integration: simulator/core-integration.md
+      - Browser viewer: simulator/viewer.md
+      - Dev log: simulator/devlog.md
+  - Reference:
+      - sim-host (Python): reference/sim-host.md
+      - dog-protocol: reference/protocol.md
+  - Concepts:
+      - Architecture: concepts/architecture.md
+      - Simulator concept: concepts/simulator.md
+  - Decisions:
+      - 1. Web 3D simulator: adr/0001-web-3d-simulator.md
+      - 2. React and Three.js: adr/0002-react-three-fiber-simulator.md
+      - 3. MuJoCo physics, plain three.js: adr/0003-mujoco-simulator.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc: { permalink: true }
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - { name: mermaid, class: mermaid, format: !!python/name:pymdownx.superfences.fence_code_format }
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [apps/sim-host/src, packages/dog-protocol/src]
+          options:
+            docstring_style: google
+            show_source: false
+            members_order: source
+            show_root_heading: true
+            heading_level: 2

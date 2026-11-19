@@ -1,0 +1,20 @@
+{
+  "name": "dog-simulator",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Browser viewer for the MuJoCo dog simulator; connects to apps/sim-host.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc -p jsconfig.json"
+  },
+  "dependencies": {
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "@types/three": "0.170.0",
+    "typescript": "5.7.3",
+    "vite": "6.0.7"
+  }
+}

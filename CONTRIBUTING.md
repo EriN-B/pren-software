@@ -41,6 +41,16 @@ git config core.hooksPath .githooks
 
 CI checks every commit of a pull request with the same script.
 
+## Documentation
+
+Docs live in `docs/` and change in the same commit as the code:
+
+- Python: Google-style docstrings (the API reference is generated from them)
+- JavaScript: `// @ts-check`, a `@file` comment and JSDoc on every function
+- a decision gets an ADR in `docs/adr/`, an iteration a dev log entry in `docs/simulator/devlog.md`
+
+Preview with `uv run --group docs mkdocs serve`.
+
 ## Pull requests
 
 - Keep them small and focused on one task

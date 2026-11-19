@@ -6,6 +6,10 @@ dependencies = ["dog-core", "dog-behavior", "dog-perception", "dog-recorder", "d
 
 [dependency-groups]
 dev = ["ruff", "pytest", "import-linter"]
+docs = [
+    "mkdocs-material>=9.8.1",
+    "mkdocstrings[python]>=1.0.8",
+]
 
 [tool.uv.workspace]
 members = ["packages/*", "apps/*"]

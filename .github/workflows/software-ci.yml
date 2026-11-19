@@ -17,6 +17,31 @@ jobs:
       - run: uv run pytest
       - run: uv run lint-imports
 
+  docs:
+    runs-on: ubuntu-latest
+    env:
+      NO_MKDOCS_2_WARNING: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run --locked --group docs mkdocs build --strict
+
+  viewer:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/dog-simulator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/dog-simulator/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+
   commit-messages:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

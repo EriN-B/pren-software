@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dog Simulator</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main class="stage">
+      <canvas id="view"></canvas>
+
+      <header class="hud">
+        <span class="brand">PREN Dog</span>
+        <span id="connection" class="pill pill-off">connecting…</span>
+        <span id="core-state" class="pill">core not attached</span>
+        <span id="sim-time" class="time">0.0 s</span>
+      </header>
+
+      <figure class="eye" aria-label="Dog's camera">
+        <canvas id="eye-overlay" width="320" height="240"></canvas>
+        <figcaption>Dog camera · boxes the detector reports</figcaption>
+      </figure>
+
+      <p id="place-hint" class="place-hint" hidden>Click the floor to place the <b></b> · Esc to cancel</p>
+    </main>
+
+    <aside class="panel">
+      <section>
+        <button id="estop" class="estop" type="button">Not-Aus</button>
+        <dl class="facts">
+          <dt>Posture</dt><dd id="posture">–</dd>
+          <dt>Speed</dt><dd id="speed">–</dd>
+          <dt>Turn rate</dt><dd id="turn">–</dd>
+        </dl>
+      </section>
+
+      <section>
+        <h2>Speak <small>to the core</small></h2>
+        <div class="buttons" id="voice">
+          <button data-word="such">such</button>
+          <button data-word="hier">hier</button>
+          <button data-word="sitz">sitz</button>
+          <button data-word="platz">platz</button>
+          <button data-word="auf">auf</button>
+          <button data-word="brav">brav</button>
+        </div>
+        <h2>Show gesture <small>to the camera</small></h2>
+        <div class="segmented" id="gesture">
+          <button data-gesture="" class="active">none</button>
+          <button data-gesture="auf">auf</button>
+          <button data-gesture="sitz">sitz</button>
+          <button data-gesture="platz">platz</button>
+        </div>
+        <p id="core-hint" class="hint">Start the sim host with <code>--core</code> to let the core react.</p>
+      </section>
+
+      <section>
+        <h2>Pico commands <small>bypass the core</small></h2>
+        <div class="buttons" id="pico">
+          <button data-command="auf">auf</button>
+          <button data-command="sitz">sitz</button>
+          <button data-command="platz">platz</button>
+          <button data-command="brav">brav</button>
+          <button data-command="signal_found">found</button>
+          <button data-rotate="-90">↺ 90°</button>
+          <button data-rotate="90">↻ 90°</button>
+          <button data-command="stop">stop</button>
+        </div>
+        <p class="hint">Drive with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or the arrow keys.</p>
+      </section>
+
+      <section>
+        <h2>Joints</h2>
+        <table class="joints">
+          <thead><tr><th>Motor</th><th>Angle</th><th>Torque</th></tr></thead>
+          <tbody id="joints"></tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Sensors</h2>
+        <dl class="facts" id="sensors"></dl>
+      </section>
+
+      <section>
+        <h2>World</h2>
+        <div class="buttons">
+          <button data-place="bone">place bone</button>
+          <button data-place="person">place person</button>
+          <button id="reset">reset</button>
+        </div>
+        <label class="check"><input type="checkbox" id="follow" checked /> camera follows the dog</label>
+      </section>
+
+      <section>
+        <h2>UART <small>last commands to the Pico</small></h2>
+        <ol id="uart-log" class="log"></ol>
+      </section>
+    </aside>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

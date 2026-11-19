@@ -1,10 +1,16 @@
 # dog-simulator
 
-Web 3D simulator for the dog robot: the dog's world and body, used to develop and test the brain
-without hardware. It never contains the brain; it connects to `apps/sim-host`.
+Browser viewer for the dog simulator. It draws what `apps/sim-host` simulates with MuJoCo and sends
+commands back; it never contains the brain or the physics.
 
-Concept: *dog-simulator: Simulator Concept* (Claude project).
+Technology: Vite + plain three.js, JavaScript with JSDoc types checked by TypeScript
+([ADR 3](../../docs/adr/0003-mujoco-simulator.md)).
 
-Technology: React, Three.js through React Three Fiber, TypeScript, Vite ([ADR 2](../../docs/adr/0002-react-three-fiber-simulator.md)).
+```sh
+npm install
+npm run dev        # http://localhost:5173, connects to ws://localhost:8780 (override with ?ws=...)
+npm run typecheck  # check the JSDoc types
+npm run build      # static files in dist/
+```
 
-Status: not started. The folder layout is added with the first implementation.
+Docs: [docs/simulator/viewer.md](../../docs/simulator/viewer.md).

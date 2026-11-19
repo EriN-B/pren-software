@@ -1,6 +1,6 @@
 # 2. React and Three.js for the web simulator
 
-Date: 2026-11-06 · Status: accepted
+Date: 2026-11-06 · Status: accepted, partly replaced by [ADR 3](0003-mujoco-simulator.md) (physics, React, TypeScript)
 
 ## Context
 

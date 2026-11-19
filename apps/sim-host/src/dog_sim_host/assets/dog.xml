@@ -1,0 +1,225 @@
+<!--
+  The dog robot, modelled from the team's flipchart drawing.
+
+  Axes: x forwards, y to the dog's left, z up. Units: metres, kilograms, radians.
+  All dimensions and masses are PLACEHOLDERS until the mechanical design has real
+  numbers; see docs/simulator/robot-model.md for the list and where each one is used.
+
+  Parts from the drawing:
+    torso        box body with emergency stop ("Not") on top and speaker ("Woof!") on the side
+    head         pans on "Servo-Kopf"; carries the camera module, ears and the LED matrix
+    tail         wags on "Servo-Schwanz"
+    4 legs       "Bein", splayed like in the drawing, each on a hip axle ("Achse_Grundkoerper")
+    leg drive    per leg a servo ("Servo-Beine 4x", MG946R) turns a crank; a linkage bar
+                 ("linkage") joins crank and leg into a parallelogram, so leg angle =
+                 servo angle; a tension spring ("Zugfeder") carries part of the weight
+    front wheels driven by DC motors through the H-bridge, with encoders left/right
+    rear casters passive, modelled as frictionless balls
+    sensors      IMU in the torso, ultrasonic sensor on the chest
+-->
+<mujoco model="dog">
+  <default>
+    <default class="dog">
+      <!-- contype 1 / conaffinity 0: dog parts touch the world, never each other. -->
+      <geom contype="1" conaffinity="0" friction="1 0.005 0.0001" rgba="0.94 0.93 0.9 1"/>
+      <joint damping="0.05" armature="0.002"/>
+
+      <default class="visual">
+        <!-- Decoration only: no collisions, no mass. -->
+        <geom contype="0" conaffinity="0" mass="0"/>
+      </default>
+
+      <default class="hip">
+        <!-- Passive leg pivot on the body; the servo moves it through the linkage. -->
+        <joint type="hinge" axis="0 1 0" damping="0.1"/>
+      </default>
+      <default class="servo">
+        <!-- MG946R: about 13 kg cm = 1.3 Nm stall torque at 6 V. Angle 0 = drawing pose. -->
+        <joint type="hinge" axis="0 1 0" range="-1.2 1.2" damping="0.3"/>
+        <position kp="25" forcerange="-1.3 1.3" ctrlrange="-1.2 1.2"/>
+      </default>
+      <default class="pin">
+        <joint type="hinge" axis="0 1 0" damping="0.01"/>
+      </default>
+      <default class="leg">
+        <geom type="capsule" size="0.014" mass="0.12" rgba="0.82 0.8 0.76 1"/>
+      </default>
+      <default class="link">
+        <geom type="capsule" size="0.007" mass="0.02" rgba="0.55 0.58 0.62 1"/>
+      </default>
+
+      <default class="wheel">
+        <joint type="hinge" axis="0 1 0" damping="0.01"/>
+        <!-- DC gear motor: target wheel speed in rad/s, torque limited. -->
+        <velocity kv="0.3" forcerange="-0.6 0.6" ctrlrange="-30 30"/>
+        <geom type="cylinder" size="0.05 0.0125" euler="1.5708 0 0" mass="0.12"
+              friction="1.2 0.01 0.0001" rgba="0.16 0.16 0.18 1"/>
+      </default>
+    </default>
+  </default>
+
+  <worldbody>
+    <body name="dog" childclass="dog" pos="0 0 0.28">
+      <freejoint name="root"/>
+      <geom name="torso" type="box" size="0.2 0.09 0.07" mass="2.0"/>
+      <site name="imu" pos="0 0 0" size="0.01"/>
+      <!-- Ultrasonic sensor on the chest, looking forwards (a rangefinder measures along +z of its site). -->
+      <site name="sonar" pos="0.201 0 -0.035" zaxis="1 0 0" size="0.008"/>
+      <geom name="sonar_left" class="visual" type="cylinder" size="0.012 0.004" pos="0.203 0.025 -0.035" zaxis="1 0 0" rgba="0.75 0.77 0.8 1"/>
+      <geom name="sonar_right" class="visual" type="cylinder" size="0.012 0.004" pos="0.203 -0.025 -0.035" zaxis="1 0 0" rgba="0.75 0.77 0.8 1"/>
+      <geom name="emergency_stop" class="visual" type="cylinder" size="0.022 0.008" pos="0.02 0 0.075" rgba="0.85 0.12 0.1 1"/>
+      <geom name="speaker" class="visual" type="cylinder" size="0.03 0.003" pos="0.12 0.091 0" zaxis="0 1 0" rgba="0.3 0.3 0.32 1"/>
+
+      <body name="head" pos="0.19 0 0.07">
+        <joint name="neck" type="hinge" axis="0 0 1" range="-0.8 0.8" damping="0.05"/>
+        <geom name="neck" type="capsule" fromto="0 0 0 0.04 0 0.04" size="0.025" mass="0.05"/>
+        <geom name="skull" type="box" size="0.06 0.05 0.045" pos="0.07 0 0.06" mass="0.2"/>
+        <geom name="snout" type="box" size="0.035 0.035 0.025" pos="0.15 0 0.04" mass="0.03"/>
+        <geom name="nose" class="visual" type="sphere" size="0.012" pos="0.186 0 0.05" rgba="0.1 0.1 0.1 1"/>
+        <geom name="ear_left" class="visual" type="capsule" fromto="0.05 0.035 0.1 0.03 0.06 0.14" size="0.01"/>
+        <geom name="ear_right" class="visual" type="capsule" fromto="0.05 -0.035 0.1 0.03 -0.06 0.14" size="0.01"/>
+        <geom name="eye_left" class="visual" type="sphere" size="0.008" pos="0.128 0.03 0.08" rgba="0.08 0.08 0.1 1"/>
+        <geom name="eye_right" class="visual" type="sphere" size="0.008" pos="0.128 -0.03 0.08" rgba="0.08 0.08 0.1 1"/>
+        <!-- Camera module on top of the snout. In an eye socket the snout would hide a quarter of the image. -->
+        <geom name="camera_lens" class="visual" type="cylinder" size="0.009 0.004" pos="0.17 0 0.068" zaxis="1 0 -0.36" rgba="0.05 0.2 0.35 1"/>
+        <geom name="led_matrix" class="visual" type="box" size="0.03 0.001 0.02" pos="0.07 0.0505 0.06" rgba="0.1 0.45 0.25 1"/>
+        <!-- Raspberry Pi camera v2: 62 x 49 degree field of view, tilted 20 degrees down so the
+             floor close to the dog is in view (straight ahead it would miss the first 1.2 m).
+             A MuJoCo camera looks along -z; xyaxes gives image right and image up. -->
+        <camera name="eye" pos="0.175 0 0.07" xyaxes="0 -1 0 0.342 0 0.94" fovy="48.8"/>
+      </body>
+
+      <body name="tail" pos="-0.2 0 0.06">
+        <joint name="tail" type="hinge" axis="0 0 1" range="-0.9 0.9" damping="0.01"/>
+        <geom name="tail" type="capsule" fromto="0 0 0 -0.05 0 0.12" size="0.012" mass="0.03"/>
+      </body>
+
+      <!-- Legs: front ones end in the driven wheels, rear ones in casters (priority makes
+           their frictionless condim win over the floor). Generated with a = 0.3 rad splay,
+           crank 0.07 m, servo shaft 0.045 m from the hip axle towards the body centre. -->
+      <body name="leg_front_left" pos="0.14 0.125 -0.03">
+        <joint name="hip_front_left" class="hip"/>
+        <geom name="leg_front_left" class="leg" fromto="0 0 0 0.0591 0 -0.1911"/>
+        <site name="leg_attach_front_left" pos="0.0207 0 -0.0669"/>
+        <site name="spring_leg_front_left" pos="0.0355 0 -0.1146"/>
+        <body name="wheel_left" pos="0.0591 0 -0.1911">
+          <joint name="wheel_left" class="wheel"/>
+          <geom name="wheel_left" class="wheel" pos="0 0.03 0"/>
+          <geom name="motor_left" class="visual" type="cylinder" size="0.014 0.025" pos="0 -0.02 0" zaxis="0 1 0" rgba="0.6 0.62 0.66 1"/>
+        </body>
+      </body>
+      <body name="crank_front_left" pos="0.095 0.105 -0.03">
+        <joint name="servo_front_left" class="servo"/>
+        <geom name="crank_front_left" class="link" fromto="0 0 0 0.0207 0 -0.0669"/>
+        <body name="linkage_front_left" pos="0.0207 0 -0.0669">
+          <joint name="linkage_front_left" class="pin"/>
+          <geom name="linkage_front_left" class="link" fromto="0 0 0 0.045 0 0"/>
+          <site name="linkage_end_front_left" pos="0.045 0.02 0"/>
+        </body>
+      </body>
+      <site name="spring_body_front_left" pos="0.040 0.125 -0.055"/>
+      <body name="leg_front_right" pos="0.14 -0.125 -0.03">
+        <joint name="hip_front_right" class="hip"/>
+        <geom name="leg_front_right" class="leg" fromto="0 0 0 0.0591 0 -0.1911"/>
+        <site name="leg_attach_front_right" pos="0.0207 0 -0.0669"/>
+        <site name="spring_leg_front_right" pos="0.0355 0 -0.1146"/>
+        <body name="wheel_right" pos="0.0591 0 -0.1911">
+          <joint name="wheel_right" class="wheel"/>
+          <geom name="wheel_right" class="wheel" pos="0 -0.03 0"/>
+          <geom name="motor_right" class="visual" type="cylinder" size="0.014 0.025" pos="0 0.02 0" zaxis="0 1 0" rgba="0.6 0.62 0.66 1"/>
+        </body>
+      </body>
+      <body name="crank_front_right" pos="0.095 -0.105 -0.03">
+        <joint name="servo_front_right" class="servo"/>
+        <geom name="crank_front_right" class="link" fromto="0 0 0 0.0207 0 -0.0669"/>
+        <body name="linkage_front_right" pos="0.0207 0 -0.0669">
+          <joint name="linkage_front_right" class="pin"/>
+          <geom name="linkage_front_right" class="link" fromto="0 0 0 0.045 0 0"/>
+          <site name="linkage_end_front_right" pos="0.045 -0.02 0"/>
+        </body>
+      </body>
+      <site name="spring_body_front_right" pos="0.040 -0.125 -0.055"/>
+      <body name="leg_rear_left" pos="-0.14 0.125 -0.03">
+        <joint name="hip_rear_left" class="hip"/>
+        <geom name="leg_rear_left" class="leg" fromto="0 0 0 -0.0684 0 -0.2211"/>
+        <site name="leg_attach_rear_left" pos="-0.0207 0 -0.0669"/>
+        <site name="spring_leg_rear_left" pos="-0.0355 0 -0.1146"/>
+        <geom name="caster_rear_left" type="sphere" size="0.02" pos="-0.0684 0 -0.2211" condim="1" priority="1" mass="0.02" rgba="0.16 0.16 0.18 1"/>
+      </body>
+      <body name="crank_rear_left" pos="-0.095 0.105 -0.03">
+        <joint name="servo_rear_left" class="servo"/>
+        <geom name="crank_rear_left" class="link" fromto="0 0 0 -0.0207 0 -0.0669"/>
+        <body name="linkage_rear_left" pos="-0.0207 0 -0.0669">
+          <joint name="linkage_rear_left" class="pin"/>
+          <geom name="linkage_rear_left" class="link" fromto="0 0 0 -0.045 0 0"/>
+          <site name="linkage_end_rear_left" pos="-0.045 0.02 0"/>
+        </body>
+      </body>
+      <site name="spring_body_rear_left" pos="-0.040 0.125 -0.055"/>
+      <body name="leg_rear_right" pos="-0.14 -0.125 -0.03">
+        <joint name="hip_rear_right" class="hip"/>
+        <geom name="leg_rear_right" class="leg" fromto="0 0 0 -0.0684 0 -0.2211"/>
+        <site name="leg_attach_rear_right" pos="-0.0207 0 -0.0669"/>
+        <site name="spring_leg_rear_right" pos="-0.0355 0 -0.1146"/>
+        <geom name="caster_rear_right" type="sphere" size="0.02" pos="-0.0684 0 -0.2211" condim="1" priority="1" mass="0.02" rgba="0.16 0.16 0.18 1"/>
+      </body>
+      <body name="crank_rear_right" pos="-0.095 -0.105 -0.03">
+        <joint name="servo_rear_right" class="servo"/>
+        <geom name="crank_rear_right" class="link" fromto="0 0 0 -0.0207 0 -0.0669"/>
+        <body name="linkage_rear_right" pos="-0.0207 0 -0.0669">
+          <joint name="linkage_rear_right" class="pin"/>
+          <geom name="linkage_rear_right" class="link" fromto="0 0 0 -0.045 0 0"/>
+          <site name="linkage_end_rear_right" pos="-0.045 -0.02 0"/>
+        </body>
+      </body>
+      <site name="spring_body_rear_right" pos="-0.040 -0.125 -0.055"/>
+rear_len 0.2314025480461426 hip height 0.2410672978251212
+    </body>
+  </worldbody>
+
+  <equality>
+    <!-- Close each parallelogram: the end of the linkage bar is pinned to the leg. -->
+    <connect site1="linkage_end_front_left" site2="leg_attach_front_left"/>
+    <connect site1="linkage_end_front_right" site2="leg_attach_front_right"/>
+    <connect site1="linkage_end_rear_left" site2="leg_attach_rear_left"/>
+    <connect site1="linkage_end_rear_right" site2="leg_attach_rear_right"/>
+  </equality>
+
+  <tendon>
+    <!-- Tension springs: pull only once stretched past the first springlength value's band
+         (force = 150 N/m * (length - 0.14 m) when longer, nothing when shorter).
+         Tuned so the servos hold about 0.2 Nm standing instead of 0.5 Nm. -->
+    <spatial name="spring_front_left" stiffness="150" springlength="0 0.14" width="0.003" rgba="0.85 0.75 0.3 1">
+      <site site="spring_body_front_left"/><site site="spring_leg_front_left"/>
+    </spatial>
+    <spatial name="spring_front_right" stiffness="150" springlength="0 0.14" width="0.003" rgba="0.85 0.75 0.3 1">
+      <site site="spring_body_front_right"/><site site="spring_leg_front_right"/>
+    </spatial>
+    <spatial name="spring_rear_left" stiffness="150" springlength="0 0.14" width="0.003" rgba="0.85 0.75 0.3 1">
+      <site site="spring_body_rear_left"/><site site="spring_leg_rear_left"/>
+    </spatial>
+    <spatial name="spring_rear_right" stiffness="150" springlength="0 0.14" width="0.003" rgba="0.85 0.75 0.3 1">
+      <site site="spring_body_rear_right"/><site site="spring_leg_rear_right"/>
+    </spatial>
+  </tendon>
+
+  <actuator>
+    <position name="hip_front_left" joint="servo_front_left" class="servo"/>
+    <position name="hip_front_right" joint="servo_front_right" class="servo"/>
+    <position name="hip_rear_left" joint="servo_rear_left" class="servo"/>
+    <position name="hip_rear_right" joint="servo_rear_right" class="servo"/>
+    <position name="neck" joint="neck" kp="3" forcerange="-0.4 0.4" ctrlrange="-0.8 0.8"/>
+    <position name="tail" joint="tail" kp="1" forcerange="-0.2 0.2" ctrlrange="-0.9 0.9"/>
+    <velocity name="wheel_left" joint="wheel_left" class="wheel"/>
+    <velocity name="wheel_right" joint="wheel_right" class="wheel"/>
+  </actuator>
+
+  <sensor>
+    <jointpos name="encoder_left" joint="wheel_left"/>
+    <jointpos name="encoder_right" joint="wheel_right"/>
+    <framequat name="imu_orientation" objtype="site" objname="imu"/>
+    <gyro name="imu_gyro" site="imu"/>
+    <accelerometer name="imu_accel" site="imu"/>
+    <rangefinder name="sonar" site="sonar"/>
+  </sensor>
+</mujoco>

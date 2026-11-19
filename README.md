@@ -14,8 +14,8 @@ packages/
   dog-protocol/    dog_protocol    data exchanged between web simulator and sim host
 apps/
   robot/           dog_robot       runs on the robot: brain + hardware adapters
-  sim-host/        dog_sim_host    runs on the laptop: brain + simulator adapter
-  dog-simulator/                   web 3D simulator, React + Three.js (not started)
+  sim-host/        dog_sim_host    runs on the laptop: MuJoCo robot, emulated Pico, viewer server
+  dog-simulator/                   browser viewer for the simulator, three.js + JSDoc
 scenarios/         scenario files for the simulator and tests
 config/            settings per run mode
 models/            model files (gitignored), listed in manifest.yaml
@@ -30,7 +30,8 @@ Import rules (enforced by `.importlinter`):
 - the brain does not import `dog_protocol`; `dog_protocol` does not import the brain or the apps
 - apps do not import each other
 
-Concepts: [docs/concepts/](docs/concepts/) (architecture, simulator). Decisions: [docs/adr/](docs/adr/).
+Documentation: [docs/](docs/index.md), served with `uv run --group docs mkdocs serve`
+(simulator guide, robot model, Pico protocol, API reference, concepts, decisions).
 
 ## Setup
 
@@ -46,6 +47,16 @@ Model dependencies are extras of `dog-perception`, install only what you need:
 uv sync --all-packages --extra vosk   # also: mediapipe, yolo
 ```
 
+## Simulator
+
+```sh
+uv run dog-sim                                   # physics + emulated Pico + viewer server
+npm --prefix apps/dog-simulator install          # once
+npm --prefix apps/dog-simulator run dev          # viewer on http://localhost:5173
+```
+
+See [docs/simulator/](docs/simulator/index.md).
+
 ## Commands
 
 ```sh
@@ -53,6 +64,8 @@ uv run pytest               # tests
 uv run ruff check           # lint
 uv run ruff format          # format
 uv run lint-imports         # check import rules
+uv run --group docs mkdocs build --strict        # docs
+npm --prefix apps/dog-simulator run typecheck    # viewer JSDoc types
 ```
 
 CI (`.github/workflows/software-ci.yml`) runs the same checks on every push and pull request.
