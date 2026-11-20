@@ -5,4 +5,5 @@ __pycache__/
 .import_linter_cache/
 models/*
 !models/manifest.yaml
-*.DS_Store
+*state_machine.png
+.DS_Store

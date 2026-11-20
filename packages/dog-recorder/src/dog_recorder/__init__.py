@@ -1,1 +1,1 @@
-"""Recording of sensor data."""
+from .audio_model import AudioModel

@@ -1,0 +1,27 @@
+description: "Ultralytics YOLOe-26n model trained on {'train': {'grounding_data': [{'img_path': '../datasets/flickr/full_images/', 'json_file': '../datasets/flickr/annotations/final_flickr_separateGT_train_segm.json'}, {'img_path': '../datasets/mixed_grounding/gqa/images', 'json_file': '../datasets/mixed_grounding/annotations/final_mixed_train_no_coco_segm.json'}, {'img_path': '../datasets/Objects365v1/images/train', 'json_file': '../datasets/Objects365v1/annotations/objects365_train_segm.json'}]}, 'val': {'yolo_data': ['/home/louis/ultra_louis_work/datasets/lvis.yaml']}}"
+author: Ultralytics
+date: "2026-11-14T16:17:20.207165+01:00"
+version: "8.4.197"
+license: AGPL-3.0 License (https://ultralytics.com/license)
+docs: https://docs.ultralytics.com
+stride: 32
+task: detect
+head: YOLOEDetect
+batch: 1
+imgsz:
+- 384
+- 512
+names:
+  0: bone
+  1: dog bone
+  2: dog chew bone
+  3: chew toy
+  4: person
+  5: shoe
+args:
+  batch: 1
+  quantize: null
+channels: 3
+end2end: false
+source_checkpoint: yoloe-26n-seg.pt
+source_sha256: "1741c1f8da3cea47e2c01829c334a50dc0b9bbd05e685b90a3ce84fae32c8c1b"
