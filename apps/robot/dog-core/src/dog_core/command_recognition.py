@@ -1,19 +1,22 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
-from contextlib import closing
-import threading
+
 import re
+import threading
+from contextlib import closing
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from dog_core.machine import PrenMachine
 
-import cv2
-import time
-from dog_perception import GestureModel
 import logging
+import time
+
+import cv2
+from dog_perception import GestureModel
 from dog_perception.enum_gesture_type import GestureType
 
-class CommandRecognition():
+
+class CommandRecognition:
     def __init__(self):
         self.stop_event = threading.Event()
         self.audio_thread = None
@@ -29,7 +32,9 @@ class CommandRecognition():
         self.stop_event = stop_event
 
         def accept(command):
-            if stop_event.is_set() or not any(event.id == command for event in machine.allowed_events):
+            if stop_event.is_set() or not any(
+                event.id == command for event in machine.allowed_events
+            ):
                 return False
             if not command_semaphore.acquire(blocking=False) or stop_event.is_set():
                 return False
@@ -41,7 +46,9 @@ class CommandRecognition():
                 ready.wait()
                 if not self.audio_lock.acquire(timeout=1.0):
                     if not stop_event.is_set():
-                        machine.shared.logger.error("Audio recognition could not start: microphone is still in use")
+                        machine.shared.logger.error(
+                            "Audio recognition could not start: microphone is still in use"
+                        )
                     return
                 try:
                     if stop_event.is_set():
@@ -49,14 +56,25 @@ class CommandRecognition():
                     command = None
                     machine.shared.microphone.start()
                     try:
-                        with closing(machine.shared.audio_model.get_transcription_stream(
-                            machine.shared.microphone, machine.shared.logger, stop_event
-                        )) as stream:
+                        with closing(
+                            machine.shared.audio_model.get_transcription_stream(
+                                machine.shared.microphone,
+                                machine.shared.logger,
+                                stop_event,
+                            )
+                        ) as stream:
                             for output in stream:
                                 if stop_event.is_set():
                                     break
                                 for word in re.findall(r"\w+", output.casefold()):
-                                    if word in ("hier", "sitz", "platz", "auf", "such", "brav") and accept(word):
+                                    if word in (
+                                        "hier",
+                                        "sitz",
+                                        "platz",
+                                        "auf",
+                                        "such",
+                                        "brav",
+                                    ) and accept(word):
                                         command = word
                                         break
                                 if stop_event.is_set():
@@ -65,7 +83,9 @@ class CommandRecognition():
                         try:
                             machine.shared.microphone.stop()
                         except Exception:
-                            machine.shared.logger.exception("Stopping microphone failed")
+                            machine.shared.logger.exception(
+                                "Stopping microphone failed"
+                            )
                 finally:
                     self.audio_lock.release()
                 # The next state can start recognition as soon as the command is sent.
@@ -80,14 +100,18 @@ class CommandRecognition():
                 ready.wait()
                 if not self.gesture_lock.acquire(timeout=1.0):
                     if not stop_event.is_set():
-                        machine.shared.logger.error("Gesture recognition could not start: camera is still in use")
+                        machine.shared.logger.error(
+                            "Gesture recognition could not start: camera is still in use"
+                        )
                     return
                 try:
                     command = None
                     while not stop_event.is_set():
                         candidate = self.look_for_gesture_command(
-                            machine.shared.logger, machine.shared.camera,
-                            machine.shared.gesture_model, stop_event
+                            machine.shared.logger,
+                            machine.shared.camera,
+                            machine.shared.gesture_model,
+                            stop_event,
                         )
                         if candidate and accept(candidate.value):
                             command = candidate.value
@@ -100,8 +124,12 @@ class CommandRecognition():
             except Exception:
                 machine.shared.logger.exception("Gesture worker failed")
 
-        self.audio_thread = threading.Thread(target=audio_worker, name="Audio recognition", daemon=True)
-        self.gesture_thread = threading.Thread(target=gesture_worker, name="Gesture recognition", daemon=True)
+        self.audio_thread = threading.Thread(
+            target=audio_worker, name="Audio recognition", daemon=True
+        )
+        self.gesture_thread = threading.Thread(
+            target=gesture_worker, name="Gesture recognition", daemon=True
+        )
         try:
             self.audio_thread.start()
             self.gesture_thread.start()
@@ -115,12 +143,24 @@ class CommandRecognition():
         self.stop_event.set()
         deadline = time.monotonic() + 1.0
         for worker in (self.audio_thread, self.gesture_thread):
-            if worker and worker is not threading.current_thread() and worker.ident is not None:
+            if (
+                worker
+                and worker is not threading.current_thread()
+                and worker.ident is not None
+            ):
                 worker.join(timeout=max(0.0, deadline - time.monotonic()))
                 if worker.is_alive():
-                    machine.shared.logger.error("%s did not stop within one second", worker.name)
+                    machine.shared.logger.error(
+                        "%s did not stop within one second", worker.name
+                    )
 
-    def look_for_gesture_command(self, logger: logging.Logger, camera: cv2.VideoCapture, model: GestureModel, stop_event: threading.Event) -> str | None:
+    def look_for_gesture_command(
+        self,
+        logger: logging.Logger,
+        camera: cv2.VideoCapture,
+        model: GestureModel,
+        stop_event: threading.Event,
+    ) -> str | None:
         commands = [GestureType.AUF, GestureType.SITZ, GestureType.PLATZ]
         while not stop_event.is_set():
             success, frame = camera.read()

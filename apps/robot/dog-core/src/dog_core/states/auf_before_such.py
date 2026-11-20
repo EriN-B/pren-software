@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 from dog_core.states import perform_auf
 
 if TYPE_CHECKING:
@@ -7,9 +9,9 @@ if TYPE_CHECKING:
 
 
 def enter(machine: PrenMachine) -> None:
-    machine.shared.logger.info("Currently in state: auf_before_hier")
+    machine.shared.logger.info("Currently in state: auf_before_such")
     perform_auf.stand_up(machine)
-    machine.go_to_perform_hier()
+    machine.go_to_searching()
 
 
 def exit(machine: PrenMachine) -> None:

@@ -30,9 +30,7 @@ class Robot:
         self.uart.drive.side_effect = self.drive
         self.uart.require_odometry.side_effect = self.require_odometry
         self.machine = SimpleNamespace(
-            shared=SimpleNamespace(
-                odometry=self.path, uart=self.uart, logger=Mock()
-            ),
+            shared=SimpleNamespace(odometry=self.path, uart=self.uart, logger=Mock()),
             returned=Mock(side_effect=lambda: self.commands.append(("returned",))),
         )
         monkeypatch.setattr(
