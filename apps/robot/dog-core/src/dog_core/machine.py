@@ -1,7 +1,22 @@
-from dog_core.shared import SharedContext
-from dog_core.command_recognition import CommandRecognition
-from dog_core.states import standing_idle, found, perform_auf, perform_hier, platz, returning, searching, startup, sitz, perform_brav, auf_before_such, auf_before_brav, auf_before_hier
 from statemachine import Event, State, StateMachine
+
+from dog_core.command_recognition import CommandRecognition
+from dog_core.shared import SharedContext
+from dog_core.states import (
+    auf_before_brav,
+    auf_before_hier,
+    auf_before_such,
+    found,
+    perform_auf,
+    perform_brav,
+    perform_hier,
+    platz,
+    returning,
+    searching,
+    sitz,
+    standing_idle,
+    startup,
+)
 
 
 class PrenMachine(StateMachine):
@@ -41,10 +56,7 @@ class PrenMachine(StateMachine):
     command_platz = Event(
         standing_idle.to(platz) | sitz.to(platz), id="platz", name="Platz"
     )
-    auf = (
-        sitz.to(perform_auf)
-        | platz.to(perform_auf)
-    )
+    auf = sitz.to(perform_auf) | platz.to(perform_auf)
     brav = (
         standing_idle.to(perform_brav)
         | sitz.to(auf_before_brav)
@@ -60,7 +72,7 @@ class PrenMachine(StateMachine):
     go_to_searching = auf_before_such.to(searching)
     go_to_perform_brav = auf_before_brav.to(perform_brav)
     go_to_perform_hier = auf_before_hier.to(perform_hier)
-    
+
     def __init__(self):
         self.shared = SharedContext()
         self.command_recognition = CommandRecognition()

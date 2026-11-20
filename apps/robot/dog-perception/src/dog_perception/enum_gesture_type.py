@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class GestureType(Enum):
     AUF = "auf"
     SITZ = "sitz"

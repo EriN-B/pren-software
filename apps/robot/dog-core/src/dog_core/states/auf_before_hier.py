@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
+
 from dog_core.states import perform_auf
 
 if TYPE_CHECKING:

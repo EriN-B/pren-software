@@ -10,6 +10,7 @@ TURN_WAIT_SECONDS = 3.0
 CLOSE_FRAME_FRACTION = 0.75
 MISSING_CONFIRMATION_FRAMES = 3
 
+
 def enter(machine: PrenMachine) -> None:
     machine.shared.logger.info("Currently in state: searching (such)")
     creep_started = None
@@ -94,7 +95,9 @@ def enter(machine: PrenMachine) -> None:
                 downward_movements = 0
             close_now = downward_movements >= 2
             if close_now and not bone_close:
-                machine.shared.logger.info("Bone is centered, low in frame, and moving down")
+                machine.shared.logger.info(
+                    "Bone is centered, low in frame, and moving down"
+                )
             bone_close = close_now
             previous_center_y = center_y
 
@@ -109,6 +112,7 @@ def enter(machine: PrenMachine) -> None:
         machine.shared.uart.stop()
 
     machine.signal()
+
 
 def exit(machine: PrenMachine) -> None:
     machine.shared.uart.stop()
