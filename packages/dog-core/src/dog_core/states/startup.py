@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import cv2
 import sounddevice as sd
-from dog_core.path_to_home import PathToHome
+from dog_core.odometry import Odometry
 from dog_core.uart import Uart
 from dog_perception import GestureModel, ObjectModel
 from dog_recorder import AudioModel
@@ -36,7 +36,7 @@ def enter(machine: PrenMachine):
     # Setup object_model
     machine.shared.object_model = ObjectModel()
     # Setup coordinate system
-    machine.shared.path_to_here = PathToHome()
+    machine.shared.odometry = Odometry()
 
     # Setup logger
     logger = logging.getLogger("state_machine")
@@ -53,8 +53,8 @@ def enter(machine: PrenMachine):
 
     # Share the state machine logger with the UART connection.
     machine.shared.uart = Uart(logger=logger).open()
-    machine.shared.uart.start_path_recording(machine.shared.path_to_here)
-    if not machine.shared.path_to_here.wait_until_initialized(timeout=3.0):
+    machine.shared.uart.start_path_recording(machine.shared.odometry)
+    if not machine.shared.odometry.wait_until_initialized(timeout=3.0):
         machine.shared.uart.close()
         raise RuntimeError("No encoder/IMU baseline received; cannot establish home")
 

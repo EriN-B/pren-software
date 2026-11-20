@@ -22,7 +22,7 @@ def enter(machine: PrenMachine) -> None:
     reached_home = False
     try:
         machine.shared.uart.stop()
-        path = machine.shared.path_to_here
+        path = machine.shared.odometry
         if path is None or not path.initialized:
             machine.shared.logger.error(
                 "Cannot return home without initialized odometry"

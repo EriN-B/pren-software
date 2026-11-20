@@ -12,7 +12,7 @@ from queue import Queue
 from threading import Event, Lock, RLock, Thread, current_thread
 from typing import Self
 
-from dog_core.path_to_home import PathToHome
+from dog_core.odometry import Odometry
 from dog_core.uart_protocol import JsonUartProtocol, UartProtocol
 
 
@@ -61,7 +61,7 @@ class Uart:
         self._fd: int | None = None
         self._read_lock = Lock()
         self._write_lock = RLock()
-        self._path: PathToHome | None = None
+        self._path: Odometry | None = None
         self._receiver: Thread | None = None
         self._receiver_stop = Event()
         self._odometry_timeout = odometry_timeout
@@ -114,7 +114,7 @@ class Uart:
                 fd, self._fd = self._fd, None
                 os.close(fd)
 
-    def start_path_recording(self, path: PathToHome) -> None:
+    def start_path_recording(self, path: Odometry) -> None:
         """Continuously record sensor telemetry across all states.
 
         Start once, immediately after open(), while still at home. Until the

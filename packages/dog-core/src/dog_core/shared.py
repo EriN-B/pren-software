@@ -5,7 +5,7 @@ import sounddevice as sd
 from dog_perception import GestureModel, ObjectModel
 from dog_recorder import AudioModel
 
-from dog_core.path_to_home import PathToHome
+from dog_core.odometry import Odometry
 from dog_core.uart import Uart
 
 
@@ -19,5 +19,5 @@ class SharedContext:
         self.audio_model: AudioModel | None
         self.object_model: ObjectModel | None
         self.uart: Uart | None
-        self.path_to_here: PathToHome | None = None
+        self.odometry: Odometry | None = None
         self.logger: logging.Logger | None

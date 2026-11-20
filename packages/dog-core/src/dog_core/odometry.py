@@ -14,7 +14,7 @@ class Pose:
     heading: float = 0.0
 
 
-class PathToHome:
+class Odometry:
     """Keep the startup origin, current pose and a trail of measured waypoints.
 
     Call record() for every sensor sample, in every state. Distances must be

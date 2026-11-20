@@ -5,14 +5,14 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from dog_core.path_to_home import PathToHome
+from dog_core.odometry import Odometry
 from dog_core.states import returning
 from dog_core.uart import Uart
 
 
 class Robot:
     def __init__(self, monkeypatch, *, origin_heading=350):
-        self.path = PathToHome()
+        self.path = Odometry()
         self.now = 0.0
         self.yaw = origin_heading
         self.left = 10.0
@@ -31,7 +31,7 @@ class Robot:
         self.uart.require_odometry.side_effect = self.require_odometry
         self.machine = SimpleNamespace(
             shared=SimpleNamespace(
-                path_to_here=self.path, uart=self.uart, logger=Mock()
+                odometry=self.path, uart=self.uart, logger=Mock()
             ),
             returned=Mock(side_effect=lambda: self.commands.append(("returned",))),
         )
@@ -185,10 +185,10 @@ def test_second_trip_stops_at_home_without_retracing_first_trip(monkeypatch):
     assert max(abs(p.x) for p in robot.positions) < 0.06
 
 
-@pytest.mark.parametrize("path", [None, PathToHome()])
+@pytest.mark.parametrize("path", [None, Odometry()])
 def test_missing_baseline_stops_without_claiming_returned(monkeypatch, path):
     robot = Robot(monkeypatch)
-    robot.machine.shared.path_to_here = path
+    robot.machine.shared.odometry = path
 
     returning.enter(robot.machine)
 

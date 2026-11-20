@@ -2,7 +2,7 @@ import math
 from dataclasses import FrozenInstanceError
 
 import pytest
-from dog_core.path_to_home import PathToHome, Pose
+from dog_core.odometry import Odometry, Pose
 
 
 def record(path, timestamp, distance, heading=0, right=None):
@@ -19,7 +19,7 @@ def assert_pose(pose, x, y, heading):
 
 
 def test_first_sample_establishes_home_without_counting_old_encoder_totals():
-    path = PathToHome()
+    path = Odometry()
     assert not path.initialized
     assert not path.wait_until_initialized(0)
     record(path, 100, 123, heading=271, right=456)
@@ -33,7 +33,7 @@ def test_first_sample_establishes_home_without_counting_old_encoder_totals():
 
 
 def test_forward_reverse_and_unequal_wheel_distances():
-    path = PathToHome()
+    path = Odometry()
     record(path, 0, 0)
     record(path, 1, 2, right=1)
     assert_pose(path.pose, 1.5, 0, 0)
@@ -42,7 +42,7 @@ def test_forward_reverse_and_unequal_wheel_distances():
 
 
 def test_initial_180_turn_is_recorded_without_resetting_home():
-    path = PathToHome()
+    path = Odometry()
     record(path, 0, 0, 37)
     record(path, 1, 0.1, 127, right=-0.1)
     record(path, 2, 0.2, 217, right=-0.2)
@@ -54,7 +54,7 @@ def test_initial_180_turn_is_recorded_without_resetting_home():
 
 @pytest.mark.parametrize("start,end,expected", [(359, 1, 2), (1, 359, -2)])
 def test_heading_wrap_uses_short_turn(start, end, expected):
-    path = PathToHome()
+    path = Odometry()
     record(path, 0, 0, start)
     pose = record(path, 1, 1, end)
     turn = math.radians(expected)
@@ -63,14 +63,14 @@ def test_heading_wrap_uses_short_turn(start, end, expected):
 
 @pytest.mark.parametrize("direction", [-1, 1])
 def test_quarter_circle_uses_arc_geometry(direction):
-    path = PathToHome()
+    path = Odometry()
     record(path, 0, 0)
     pose = record(path, 1, math.pi / 2, direction * 90)
     assert_pose(pose, 1, direction, direction * 90)
 
 
 def test_square_returns_to_startup_home_in_same_coordinate_frame():
-    path = PathToHome()
+    path = Odometry()
     record(path, 0, 0, 123)
     timestamp = 0
     for leg in range(4):
@@ -83,7 +83,7 @@ def test_square_returns_to_startup_home_in_same_coordinate_frame():
 
 
 def test_waypoints_are_spaced_and_always_include_current_endpoint():
-    path = PathToHome()
+    path = Odometry()
     record(path, 0, 0)
     record(path, 1, 0.03)
     snapshot = path.waypoints
@@ -101,7 +101,7 @@ def test_waypoints_are_spaced_and_always_include_current_endpoint():
 
 
 def test_home_pose_cannot_be_mutated():
-    path = PathToHome()
+    path = Odometry()
     with pytest.raises(FrozenInstanceError):
         path.home.x = 99
     with pytest.raises(AttributeError):
@@ -109,7 +109,7 @@ def test_home_pose_cannot_be_mutated():
 
 
 def test_overflow_does_not_corrupt_pose_or_previous_sample():
-    path = PathToHome()
+    path = Odometry()
     record(path, 0, -1e308)
     with pytest.raises(ValueError, match="finite pose"):
         record(path, 1, 1e308)
@@ -120,7 +120,7 @@ def test_overflow_does_not_corrupt_pose_or_previous_sample():
 
 @pytest.mark.parametrize("timestamp", [9, 10])
 def test_stale_sample_is_rejected_without_corrupting_next_update(timestamp):
-    path = PathToHome()
+    path = Odometry()
     record(path, 10, 50)
     with pytest.raises(ValueError, match="timestamps"):
         record(path, timestamp, 1000, 90)
@@ -133,7 +133,7 @@ def test_stale_sample_is_rejected_without_corrupting_next_update(timestamp):
 )
 @pytest.mark.parametrize("value", [float("nan"), float("inf"), True, "12", None])
 def test_invalid_readings_do_not_establish_a_baseline(field, value):
-    path = PathToHome()
+    path = Odometry()
     reading = {
         "timestamp": 0,
         "left_distance_m": 0,

@@ -8,7 +8,7 @@ import time
 from queue import Empty
 
 import pytest
-from dog_core.path_to_home import PathToHome
+from dog_core.odometry import Odometry
 from dog_core.uart import Uart
 from dog_core.uart_protocol import JsonUartProtocol
 
@@ -34,7 +34,7 @@ def connection():
     uart = Uart(os.ttyname(slave), odometry_timeout=1.0)
     try:
         with uart:
-            yield master, uart, PathToHome()
+            yield master, uart, Odometry()
     finally:
         os.close(master)
         os.close(slave)
@@ -115,7 +115,7 @@ def test_no_baseline_refuses_rotation_and_timeout_requests_stop():
     master, slave = os.openpty()
     try:
         with Uart(os.ttyname(slave), odometry_timeout=0.05) as uart:
-            path = PathToHome()
+            path = Odometry()
             uart.start_path_recording(path)
             with pytest.raises(RuntimeError, match="odometry"):
                 uart.rotate(180)
@@ -133,7 +133,7 @@ def test_telemetry_loss_after_moving_stops_and_latches_fault():
     master, slave = os.openpty()
     try:
         with Uart(os.ttyname(slave), odometry_timeout=0.1) as uart:
-            path = PathToHome()
+            path = Odometry()
             statuses = uart.subscribe("status")
             uart.start_path_recording(path)
             os.write(master, message(0, 0))
@@ -183,7 +183,7 @@ def test_cannot_start_a_second_reader_or_replace_home_while_recording(connection
     _, uart, path = connection
     uart.start_path_recording(path)
     with pytest.raises(RuntimeError, match="already started"):
-        uart.start_path_recording(PathToHome())
+        uart.start_path_recording(Odometry())
 
 
 def test_cannot_reuse_old_baseline_after_recording_was_interrupted(connection):

@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
-from dog_core.path_to_home import PathToHome, Pose
+from dog_core.odometry import Odometry, Pose
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def test_home_is_established_before_idle_and_survives_later_updates(startup):
 
     def baseline(path):
         machine.go_to_standing_idle.assert_not_called()
-        assert isinstance(path, PathToHome)
+        assert isinstance(path, Odometry)
         path.record(
             timestamp=100, left_distance_m=30, right_distance_m=40, heading_deg=123
         )
@@ -41,7 +41,7 @@ def test_home_is_established_before_idle_and_survives_later_updates(startup):
     with patch.object(startup, "Uart", return_value=uart):
         startup.enter(machine)
     machine.go_to_standing_idle.assert_called_once()
-    path = machine.shared.path_to_here
+    path = machine.shared.odometry
     assert path.home == path.pose == Pose()
     assert machine.shared.uart is uart
     path.record(timestamp=101, left_distance_m=31, right_distance_m=41, heading_deg=123)
@@ -56,7 +56,7 @@ def test_no_sensor_baseline_closes_uart_without_entering_idle(startup):
     uart.open.return_value = uart
     with (
         patch.object(startup, "Uart", return_value=uart),
-        patch.object(PathToHome, "wait_until_initialized", return_value=False),
+        patch.object(Odometry, "wait_until_initialized", return_value=False),
         pytest.raises(RuntimeError, match="cannot establish home"),
     ):
         startup.enter(machine)
