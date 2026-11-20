@@ -19,13 +19,14 @@ npm --prefix apps/dog-simulator install && npm --prefix apps/dog-simulator run d
 ```
 
 Open <http://localhost:5173>. Drive with **W A S D**, try the posture buttons, drag the view.
-With the dog core installed (dev-core branch), add `--core` to let it control the dog.
+To let the real dog core control it, see [core integration](core-integration.md): `apps/sim-host/scripts/core-env.sh`, then `.venv-core/bin/dog-sim --core`.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `--port` | `8780` | WebSocket port the viewer connects to |
 | `--link` | `/tmp/pren-uart-pi` | symlink to the virtual serial port the core opens |
 | `--core` | off | also run the dog core inside the simulator |
+| `--webcam` | `0` | with `--core`: laptop camera for gestures, `-1` for none |
 
 ## How it fits together
 
@@ -34,7 +35,7 @@ flowchart LR
     subgraph host["sim-host (Python, one process)"]
         world["World<br/>MuJoCo physics"]
         pico["PicoFirmware<br/>emulated Pico 2"]
-        adapters["core_adapters<br/>camera, mic, models"]
+        adapters["SimCamera<br/>rendered dog camera"]
         core["dog core<br/>(optional, --core)"]
     end
     viewer["Browser viewer<br/>three.js"]
@@ -43,8 +44,9 @@ flowchart LR
     pico -- "odometry 20 Hz" --> core
     pico -- "servo + wheel targets" --> world
     world -- "encoders, IMU" --> pico
-    world -- "object positions" --> adapters
-    adapters -- "boxes, words, gestures" --> core
+    world -- "rendered images" --> adapters
+    adapters -- "camera frames" --> core
+    laptop["laptop webcam + mic"] -- "gestures, voice" --> core
     world -- "poses, joints, springs 30 Hz" --> viewer
     viewer -- "commands, place, reset" --> host
 ```
@@ -54,9 +56,9 @@ flowchart LR
 | Body, motors, sensors | hardware | [MuJoCo model](robot-model.md) |
 | Pico 2 firmware | C on the Pico | [`PicoFirmware`](pico-emulator.md) |
 | UART cable | `/dev/serial0` | pseudo-terminal at `/tmp/pren-uart-pi` |
-| Camera + YOLO | Pi camera, `ObjectModel` | boxes projected from the world |
-| Microphone + Vosk | USB mic, `AudioModel` | words clicked in the viewer |
-| Hand gestures | camera, `GestureModel` | gesture picked in the viewer |
+| Camera + YOLO | Pi camera, `ObjectModel` | dog's view rendered by MuJoCo, the core's own YOLO |
+| Microphone + Vosk | USB mic, `AudioModel` | laptop microphone, the core's own Vosk |
+| Hand gestures | camera, `GestureModel` | laptop webcam, the core's own gesture model |
 
 ## What runs where
 

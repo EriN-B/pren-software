@@ -95,13 +95,14 @@ class World:
         mujoco.mj_forward(self.model, self.data)
         self.snapshot = self._take_snapshot()
 
-    def place(self, name: str, x: float, y: float) -> None:
+    def place(self, name: str, x: float, y: float, yaw: float = 0.0) -> None:
         """Move the bone or the person to a spot on the floor.
 
         Args:
             name: ``"bone"`` or ``"person"``.
             x: Target x in metres.
             y: Target y in metres.
+            yaw: Bone only: turn in degrees, counter-clockwise from lying along x.
 
         Raises:
             ValueError: For any other name.
@@ -109,7 +110,10 @@ class World:
         if name == "bone":
             joint = self.model.joint("bone")
             address = joint.qposadr[0]
-            self.data.qpos[address : address + 7] = (x, y, 0.03, 1, 0, 0, 0)
+            half = math.radians(yaw) / 2
+            # Lying flat, turned about the vertical axis.
+            pose = (x, y, 0.023, math.cos(half), 0, 0, math.sin(half))
+            self.data.qpos[address : address + 7] = pose
             self.data.qvel[joint.dofadr[0] : joint.dofadr[0] + 6] = 0
         elif name == "person":
             mocap = self.model.body("person").mocapid[0]

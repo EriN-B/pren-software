@@ -1,6 +1,7 @@
 // @ts-check
 /**
- * @file The 3D view: draws what MuJoCo simulates, plus the dog's own camera view.
+ * @file The 3D view: draws what MuJoCo simulates, and the dog's camera view as the
+ * viewer renders it (shown until the core's real camera images arrive).
  *
  * The browser simulates nothing. It builds one mesh per MuJoCo geom from the scene
  * message, then moves those meshes to the poses in each frame. Like MuJoCo, the
@@ -22,13 +23,16 @@ const TRAIL_POINTS = 3000;
 
 export class SimScene {
   /**
-   * @param {HTMLCanvasElement} canvas Canvas filling the window.
-   * @param {HTMLElement} eyeFrame Element marking where the dog's camera view is drawn.
+   * @param {HTMLCanvasElement} canvas Canvas of the scene panel.
+   * @param {HTMLCanvasElement} eyeCanvas Canvas for the dog's camera view.
    */
-  constructor(canvas, eyeFrame) {
+  constructor(canvas, eyeCanvas) {
     this.canvas = canvas;
-    this.eyeFrame = eyeFrame;
+    this.eyeCanvas = eyeCanvas;
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    this.eyeRenderer = new THREE.WebGLRenderer({ canvas: eyeCanvas, antialias: true });
+    this.eyeRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.eyeRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -36,8 +40,9 @@ export class SimScene {
     this.renderer.toneMappingExposure = 0.9;
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color("#12161b");
-    this.scene.fog = new THREE.Fog("#12161b", 6, 14);
+    // A light room around the field, like the hall it is taped in.
+    this.scene.background = new THREE.Color("#e9e8e4");
+    this.scene.fog = new THREE.Fog("#e9e8e4", 9, 20);
     const environment = new THREE.PMREMGenerator(this.renderer);
     this.scene.environment = environment.fromScene(new RoomEnvironment(), 0.04).texture;
     this.addLights();
@@ -64,7 +69,7 @@ export class SimScene {
     this.springs = [];
     this.dogPosition = new THREE.Vector3();
 
-    window.addEventListener("resize", () => this.resize());
+    new ResizeObserver(() => this.resize()).observe(canvas);
     this.resize();
   }
 
@@ -95,7 +100,7 @@ export class SimScene {
     geometry.setDrawRange(0, 0);
     const line = new THREE.Line(
       geometry,
-      new THREE.LineBasicMaterial({ color: "#7cc4ff", transparent: true, opacity: 0.7 }),
+      new THREE.LineBasicMaterial({ color: "#e30613", transparent: true, opacity: 0.8 }),
     );
     line.frustumCulled = false;
     this.scene.add(line);
@@ -204,7 +209,7 @@ export class SimScene {
     return ray.ray.intersectPlane(floor, new THREE.Vector3());
   }
 
-  /** Draw the main view, then the dog's camera into the bottom-left corner. */
+  /** Draw the scene, then the dog's camera view unless the core's images replace it. */
   render() {
     if (this.follow) {
       const shift = this.dogPosition.clone().sub(this.controls.target).multiplyScalar(0.08);
@@ -212,31 +217,30 @@ export class SimScene {
       this.camera.position.add(shift);
     }
     this.controls.update();
-    const { width, height } = this.canvas.getBoundingClientRect();
-    this.renderer.setScissorTest(false);
-    this.renderer.setViewport(0, 0, width, height);
     this.renderer.render(this.scene, this.camera);
-
-    // The eye view goes exactly where the inset element sits (WebGL counts y from the bottom).
-    const canvasRect = this.canvas.getBoundingClientRect();
-    const eyeRect = this.eyeFrame.getBoundingClientRect();
-    const x = eyeRect.left - canvasRect.left;
-    const y = canvasRect.bottom - eyeRect.bottom;
-    this.renderer.setScissorTest(true);
-    this.renderer.setScissor(x, y, eyeRect.width, eyeRect.height);
-    this.renderer.setViewport(x, y, eyeRect.width, eyeRect.height);
+    if (this.eyeCanvas.hidden) return;
     // The real camera sees neither the trail nor our spring lines.
     const overlays = [this.trail, ...this.springs];
     overlays.forEach((object) => (object.visible = false));
-    this.renderer.render(this.scene, this.eye);
+    this.eyeRenderer.render(this.scene, this.eye);
     overlays.forEach((object) => (object.visible = true));
   }
 
   resize() {
     const { width, height } = this.canvas.getBoundingClientRect();
+    if (!width || !height) return;
     this.renderer.setSize(width, height, false);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+  }
+
+  /**
+   * Size the dog's camera view; it keeps the camera's 4:3.
+   * @param {number} width
+   * @param {number} height
+   */
+  resizeEye(width, height) {
+    this.eyeRenderer.setSize(width, height, false);
   }
 }
 

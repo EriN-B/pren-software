@@ -56,7 +56,9 @@ The dog takes commands facing the referee, turns into the search area for SUCH, 
 | Dog | Max 20 × 50 × 50 cm at start, max 1 m long in action, wheels allowed | Simple body with a head camera; exact shape to be done |
 | Floor | Indoor, e.g. canteen or lecture hall | Plain floor; look to be done |
 
-Open: the drawing says interaction area R 1.5 m, the text says D 1.5 m. To check with the supervisors.
+A photo of the taped field (2026-11-20) settles it: the interaction circle has a radius of
+1.5 m, and the search area's two tape lines run from the circle to the pylons at 5 m. The
+simulator uses that.
 
 ## Building blocks
 

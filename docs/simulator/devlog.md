@@ -2,6 +2,36 @@
 
 One entry per iteration: what changed, what we learned, what is next. Newest first.
 
+## 2026-11-20 · The viewer as a working tool
+
+- New layout, light theme as PRODUCT.md asks, in a race-timing look: a run clock started by
+  SUCH with one split per phase, scene and dog camera side by side (the camera as large as it
+  fits), the user's webcam in the rail, and an IDE-style log dock with every log line of the
+  core, the sim host and the UART, filterable and searchable.
+- The sim host now streams the webcam image and all logs to the viewer.
+
+## 2026-11-20 · dev-core moved to apps/robot
+
+- dev-core `d73d7e7` moved the core packages from `packages/` to `apps/robot/` and cleaned up
+  formatting; no behaviour change for the simulator. `core-env.sh` now takes either layout.
+  The core starts in the simulator as before.
+
+## 2026-11-20 · The core runs with its own models
+
+- With `--core` the simulator replaces only hardware: the dog's camera is rendered by MuJoCo,
+  gestures come from the laptop webcam, voice from the laptop microphone. The stand-ins for
+  YOLO, the gesture model and Vosk, and the viewer's speak and gesture buttons, are gone.
+- `scripts/core-env.sh` builds `.venv-core` with the core from `origin/dev-core`, unchanged.
+- The bone is the scan of the real bone (`Knochen.stl`, 289 × 102 × 61 mm), laid flat and
+  reduced to 4,000 triangles by `scripts/prepare_bone.py`.
+- Bone and room made realistic: 21 cm white bone, room light, and the competition floor
+  (terracotta tiles, light grout, from photos). On light-grey tiles the core's YOLO found the
+  bone in 49 % of rendered views; on the terracotta floor in none. The light grout lines are
+  the cause. `scripts/detect_photos.py` runs the detector on real photos to check the real floor.
+- The playing field from a photo: dark glossy linoleum, white tape, interaction circle of
+  1.5 m radius open towards the search area, two lines to the pylons at 5 m. On it the core's
+  detector finds the rendered bone in 1 of 72 views. Vosk crashes if loaded after MediaPipe.
+
 ## 2026-11-20 · Interface definition checked
 
 - Compared the team's UART interface definition (2026-11-13) with dev-core and the simulator:

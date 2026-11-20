@@ -45,6 +45,24 @@
  */
 
 /**
+ * One log line: from the sim host, the dog core, or a UART command to the Pico.
+ * @typedef {object} LogEntry
+ * @property {number} seq Increasing; the backlog arrives again after a reconnect.
+ * @property {number} time Wall clock, seconds since 1970.
+ * @property {"core"|"sim"|"uart"} source
+ * @property {"DEBUG"|"INFO"|"WARNING"|"ERROR"|"CRITICAL"} level
+ * @property {string} message
+ */
+
+/**
+ * One box the core's own detector (YOLO) reported.
+ * @typedef {object} CoreDetection
+ * @property {"bone"|"person"|"shoe"} label
+ * @property {number[]} box Pixel box [x1, y1, x2, y2] in 640 x 480.
+ * @property {number} confidence 0..1.
+ */
+
+/**
  * Sent about 30 times a second.
  * @typedef {object} FrameMessage
  * @property {"frame"} type
@@ -56,7 +74,8 @@
  * @property {{posture: string, emergency_stop: boolean, speed: number,
  *   turn_rate_deg: number, turning_to: number|null, log: object[]}} pico
  * @property {{attached: boolean, state: string|null, error: string|null}} core
- * @property {Record<string, number[]>} detections Label to pixel box [x1, y1, x2, y2] in 640 x 480.
+ * @property {Record<string, number[]>} detections True position: label to pixel box [x1, y1, x2, y2] in 640 x 480.
+ * @property {CoreDetection[]} core_detections What the core's own detector found just now.
  * @property {Spring[]} springs The leg tension springs.
  */
 
@@ -72,10 +91,8 @@
 /**
  * Anything the browser may send.
  * @typedef {{type: "pico", message: object}
- *   | {type: "voice", word: string}
- *   | {type: "gesture", gesture: "auf"|"sitz"|"platz"|null}
  *   | {type: "emergency_stop", active: boolean}
- *   | {type: "place", object: "bone"|"person", x: number, y: number}
+ *   | {type: "place", object: "bone"|"person", x: number, y: number, yaw: number}
  *   | {type: "reset"}} ClientMessage
  */
 

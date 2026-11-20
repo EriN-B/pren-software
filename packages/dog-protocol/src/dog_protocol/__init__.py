@@ -60,6 +60,14 @@ class Spring(TypedDict):
     force: float  # N it pulls with; 0 when slack
 
 
+class CoreDetection(TypedDict):
+    """One box the core's own detector (YOLO) reported, read from the core's log."""
+
+    label: Literal["bone", "person", "shoe"]
+    box: list[float]  # pixel box x1, y1, x2, y2 in 640 x 480
+    confidence: float
+
+
 class FrameMessage(TypedDict):
     type: Literal["frame"]
     time: float  # simulation time, s
@@ -69,8 +77,33 @@ class FrameMessage(TypedDict):
     sensors: dict[str, float]  # odometry, heading, sonar, IMU
     pico: dict  # posture, motion, emergency stop, UART log
     core: dict  # attached, state, error
-    detections: dict[str, list[float]]  # label -> pixel box x1, y1, x2, y2 (640 x 480)
+    detections: dict[
+        str, list[float]
+    ]  # true position: label -> box x1, y1, x2, y2 (640 x 480)
+    core_detections: list[CoreDetection]  # what the core's detector found just now
     springs: list[Spring]
+
+
+class LogEntry(TypedDict):
+    """One log line: from the sim host, the dog core, or a UART command to the Pico."""
+
+    seq: int  # increasing; a viewer that reconnects gets everything again
+    time: float  # wall clock, seconds since 1970
+    source: Literal["core", "sim", "uart"]
+    level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    message: str
+
+
+class LogsMessage(TypedDict):
+    """New log lines, sent with the frames; the backlog once after connecting."""
+
+    type: Literal["logs"]
+    entries: list[LogEntry]
+
+
+# Binary messages carry images: one byte for which image, then a JPEG.
+# 0 = the dog's camera as the core gets it (640 x 480), 1 = the webcam the core's
+# gesture model watches (480 wide). Both only with the core running.
 
 
 class PicoMessage(TypedDict):
@@ -78,20 +111,6 @@ class PicoMessage(TypedDict):
 
     type: Literal["pico"]
     message: dict  # e.g. {"command": "drive", "speed": 0.1, "angle": 0}
-
-
-class VoiceMessage(TypedDict):
-    """Speak a word to the dog (needs the core)."""
-
-    type: Literal["voice"]
-    word: str
-
-
-class GestureMessage(TypedDict):
-    """Show a gesture to the camera, or ``None`` for no gesture (needs the core)."""
-
-    type: Literal["gesture"]
-    gesture: Literal["auf", "sitz", "platz"] | None
 
 
 class EmergencyStopMessage(TypedDict):
@@ -104,17 +123,13 @@ class PlaceMessage(TypedDict):
     object: Literal["bone", "person"]
     x: float
     y: float
+    yaw: float  # degrees, counter-clockwise; turns the bone, ignored for the person
 
 
 class ResetMessage(TypedDict):
+    """Reset world and Pico; with the core, restart the whole sim host (about 5 s)."""
+
     type: Literal["reset"]
 
 
-ClientMessage = (
-    PicoMessage
-    | VoiceMessage
-    | GestureMessage
-    | EmergencyStopMessage
-    | PlaceMessage
-    | ResetMessage
-)
+ClientMessage = PicoMessage | EmergencyStopMessage | PlaceMessage | ResetMessage

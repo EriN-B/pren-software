@@ -1,6 +1,7 @@
 // @ts-check
 /**
- * @file The side panel and overlays: buttons that send commands, and live readouts.
+ * @file The control rail and readouts: buttons that send commands, live values, the
+ * connection and core state in the top bar, and the boxes over the dog's camera.
  */
 
 /** @typedef {import("./protocol.js").FrameMessage} FrameMessage */
@@ -54,20 +55,13 @@ export class Panel {
         );
       });
     };
-    onClick("#voice", "data-word", (word) => this.send({ type: "voice", word }));
-    onClick("#gesture", "data-gesture", (gesture, button) => {
-      document.querySelectorAll("#gesture button").forEach((b) => b.classList.remove("active"));
-      button.classList.add("active");
-      const value = /** @type {"auf"|"sitz"|"platz"|""} */ (gesture);
-      this.send({ type: "gesture", gesture: value || null });
-    });
-    onClick("#pico", "data-command", (command) =>
+    onClick("#pico, #posture", "data-command", (command) =>
       this.send({ type: "pico", message: { command } }),
     );
     onClick("#pico", "data-rotate", (degrees) =>
       this.send({ type: "pico", message: { command: "rotate", degrees: Number(degrees) } }),
     );
-    onClick(".panel", "data-place", (object) =>
+    onClick(".rail", "data-place", (object) =>
       startPlacing(/** @type {"bone"|"person"} */ (object)),
     );
     byId("reset").addEventListener("click", () => this.send({ type: "reset" }));
@@ -106,9 +100,9 @@ export class Panel {
 
   /** @param {boolean} connected */
   showConnection(connected) {
-    const pill = byId("connection");
-    pill.textContent = connected ? "sim host connected" : "sim host offline";
-    pill.className = `pill ${connected ? "pill-on" : "pill-off"}`;
+    const state = byId("connection");
+    state.textContent = connected ? "Sim host connected" : "Sim host offline, retrying";
+    state.className = `state ${connected ? "state-on" : "state-off"}`;
   }
 
   /**
@@ -119,31 +113,28 @@ export class Panel {
     byId("sim-time").textContent = `${frame.time.toFixed(1)} s`;
     const core = byId("core-state");
     core.textContent = frame.core.error
-      ? "core failed"
+      ? "Core failed to start"
       : frame.core.attached
-        ? `core: ${frame.core.state ?? "starting"}`
-        : "core not attached";
+        ? `Core: ${(frame.core.state ?? "starting").replaceAll("_", " ")}`
+        : "Core not attached";
     core.title = frame.core.error ?? "";
-    core.className = `pill ${frame.core.error ? "pill-off" : frame.core.state ? "pill-on" : ""}`;
-    byId("core-hint").hidden = frame.core.attached;
+    core.className = `state ${frame.core.error ? "state-off" : frame.core.state ? "state-live" : ""}`;
 
     const pico = frame.pico;
     this.estopActive = pico.emergency_stop;
     byId("estop").classList.toggle("engaged", pico.emergency_stop);
-    byId("estop").textContent = pico.emergency_stop ? "Not-Aus engaged · release" : "Not-Aus";
-    byId("posture").textContent = pico.posture;
+    /** @type {HTMLElement} */ (document.querySelector(".topbar")).classList.toggle("alarm", pico.emergency_stop);
+    byId("estop").textContent = pico.emergency_stop ? "Release Not-Aus" : "Not-Aus";
+    for (const button of document.querySelectorAll("#posture button")) {
+      button.classList.toggle("active", /** @type {HTMLElement} */ (button).dataset.command === pico.posture);
+    }
     byId("speed").textContent = `${pico.speed.toFixed(2)} m/s`;
     byId("turn").textContent =
       pico.turning_to === null ? `${pico.turn_rate_deg.toFixed(0)} °/s` : `→ ${pico.turning_to.toFixed(0)}°`;
 
     this.updateJoints(frame);
     this.updateSensors(frame);
-    byId("uart-log").innerHTML = pico.log
-      .slice()
-      .reverse()
-      .map((message) => `<li>${escapeHtml(JSON.stringify(message))}</li>`)
-      .join("");
-    this.drawDetections(frame.detections);
+    this.drawDetections(frame.detections, frame.core_detections ?? []);
   }
 
   /**
@@ -194,30 +185,56 @@ export class Panel {
   }
 
   /**
-   * Draw the detector's boxes over the dog's camera inset (frames are 640 x 480).
-   * @param {Record<string, number[]>} detections
+   * Draw the boxes over the dog's camera view (its images are 640 x 480).
+   * @param {Record<string, number[]>} detections True positions, drawn dashed.
+   * @param {import("./protocol.js").CoreDetection[]} coreDetections What the core's detector found, drawn solid.
    */
-  drawDetections(detections) {
+  drawDetections(detections, coreDetections) {
     const context = this.overlay;
     if (!context) return;
-    const scale = context.canvas.width / 640;
-    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-    context.lineWidth = 2;
-    context.font = "600 11px system-ui, sans-serif";
-    for (const [label, [x1, y1, x2, y2]] of Object.entries(detections)) {
-      const colour = label === "bone" ? "#ffd166" : label === "person" ? "#7cc4ff" : "#c39bff";
-      context.strokeStyle = colour;
-      context.fillStyle = colour;
-      context.strokeRect(x1 * scale, y1 * scale, (x2 - x1) * scale, (y2 - y1) * scale);
-      context.fillText(label.replace("_", " "), x1 * scale + 3, Math.max(11, y1 * scale - 4));
+    const { width, height } = context.canvas;
+    const scale = width / 640;
+    const pixel = width / (context.canvas.clientWidth || 1); // device pixels per CSS pixel
+    context.clearRect(0, 0, width, height);
+    context.font = `600 ${11 * pixel}px system-ui, sans-serif`;
+    /** @type {number[][]} Label rectangles already drawn, so labels never overlap. */
+    const placed = [];
+
+    /**
+     * A box with its label as a solid chip: above the box, inside it when the top edge
+     * would clip, and moved down until it overlaps no other label.
+     * @param {number[]} box
+     * @param {string} text
+     * @param {string} chip Chip colour.
+     * @param {boolean} dashed
+     */
+    const draw = ([x1, y1, x2, y2], text, chip, dashed) => {
+      const [bx, by, bw, bh] = [x1 * scale, y1 * scale, (x2 - x1) * scale, (y2 - y1) * scale];
+      context.setLineDash(dashed ? [5 * pixel, 4 * pixel] : []);
+      context.lineWidth = (dashed ? 1 : 2) * pixel;
+      context.strokeStyle = dashed ? "rgb(255 255 255 / 0.85)" : chip;
+      context.strokeRect(bx, by, bw, bh);
+      const w = context.measureText(text).width + 10 * pixel;
+      const h = 17 * pixel;
+      let x = Math.min(Math.max(0, bx), width - w);
+      let y = by - h >= 0 ? by - h : by + 2 * pixel;
+      while (placed.some(([px, py, pw, ph]) => x < px + pw && px < x + w && y < py + ph && py < y + h)) {
+        y += h + 2 * pixel;
+      }
+      placed.push([x, y, w, h]);
+      context.setLineDash([]);
+      context.fillStyle = chip;
+      context.fillRect(x, y, w, h);
+      context.fillStyle = "#ffffff";
+      context.fillText(text, x + 5 * pixel, y + 12.5 * pixel);
+    };
+
+    for (const [label, position] of Object.entries(detections)) {
+      draw(position, label.replace("_", " "), "rgb(17 17 17 / 0.82)", true); // real position
+    }
+    for (const found of coreDetections) {
+      draw(found.box, `${found.label} ${found.confidence.toFixed(2)}`, "#1e9e4a", false); // a hit
     }
   }
-}
 
-/**
- * @param {string} text
- * @returns {string}
- */
-function escapeHtml(text) {
-  return text.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 }

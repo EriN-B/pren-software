@@ -3,102 +3,153 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dog Simulator</title>
+    <title>PREN Dog Simulator</title>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <main class="stage">
-      <canvas id="view"></canvas>
+    <header class="topbar">
+      <div class="identity">
+        <h1>PREN Dog Simulator</h1>
+        <p class="status">
+          <span id="connection" class="state state-off">Connecting</span>
+          <span id="core-state" class="state">Core not attached</span>
+        </p>
+      </div>
 
-      <header class="hud">
-        <span class="brand">PREN Dog</span>
-        <span id="connection" class="pill pill-off">connecting…</span>
-        <span id="core-state" class="pill">core not attached</span>
-        <span id="sim-time" class="time">0.0 s</span>
-      </header>
+      <div class="run" aria-label="Competition run">
+        <div class="clock">
+          <output id="run-clock" class="clock-time">0:00.0</output>
+          <span class="budget-bar" aria-hidden="true"><i id="budget-fill"></i></span>
+          <span id="run-budget" class="clock-budget">core not attached</span>
+        </div>
+        <ol class="splits" id="splits">
+          <li data-split="commands"><span>Commands</span><output>–</output></li>
+          <li data-split="search"><span>Search <small id="search-delta"></small></span><output>–</output></li>
+          <li data-split="found"><span>Found</span><output>–</output></li>
+          <li data-split="return"><span>Return</span><output>–</output></li>
+        </ol>
+      </div>
 
-      <figure class="eye" aria-label="Dog's camera">
-        <canvas id="eye-overlay" width="320" height="240"></canvas>
-        <figcaption>Dog camera · boxes the detector reports</figcaption>
-      </figure>
+      <div class="topbar-end">
+        <span class="sim-time">Sim <output id="sim-time">0.0 s</output></span>
+        <button id="estop" class="estop" type="button">Not-Aus</button>
+      </div>
+    </header>
 
-      <p id="place-hint" class="place-hint" hidden>Click the floor to place the <b></b> · Esc to cancel</p>
+    <main class="workspace">
+      <section class="view" aria-labelledby="scene-title">
+        <header class="view-head">
+          <h2 id="scene-title">Scene</h2>
+          <span class="meta">3D world, true positions</span>
+          <label class="toggle"><input type="checkbox" id="follow" checked /> Follow dog</label>
+        </header>
+        <div class="view-body">
+          <canvas id="view"></canvas>
+          <p id="place-hint" class="place-hint" hidden>
+            Click the floor to place the <b></b><span id="place-turn"> · <kbd>R</kbd> turns it to <span id="place-yaw">0</span>°</span> · <kbd>Esc</kbd> cancels
+          </p>
+        </div>
+      </section>
+
+      <section class="view" aria-labelledby="camera-title">
+        <header class="view-head">
+          <h2 id="camera-title">Dog camera</h2>
+          <span class="meta" id="camera-source">Viewer's own rendering</span>
+          <span class="legend"><i class="key-truth"></i><span class="long">real position</span><span class="short">real</span> <i class="key-core"></i><span class="long">core detection</span><span class="short">core</span></span>
+        </header>
+        <div class="view-body camera-body">
+          <div class="camera-stage" id="camera-stage">
+            <canvas id="eye"></canvas>
+            <canvas id="eye-overlay"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <aside class="rail" aria-label="Controls">
+        <section class="block">
+          <h2>Your webcam</h2>
+          <div class="webcam">
+            <p id="webcam-empty" class="empty">Shown when the core runs with a webcam: <code>dog-sim --core --webcam 1</code></p>
+          </div>
+        </section>
+
+        <section class="block">
+          <h2>Posture</h2>
+          <div class="segmented" id="posture" role="group" aria-label="Posture">
+            <button data-command="auf">auf</button>
+            <button data-command="sitz">sitz</button>
+            <button data-command="platz">platz</button>
+            <button data-command="vorderbeine_runter" title="Front legs down">vorne</button>
+          </div>
+        </section>
+
+        <section class="block">
+          <h2>Pico <small>commands straight to the Pico, bypassing the core</small></h2>
+          <div class="actions" id="pico">
+            <button data-rotate="-90">Turn left 90°</button>
+            <button data-rotate="90">Turn right 90°</button>
+            <button data-command="brav">Wag tail</button>
+            <button data-command="signal_found">Signal found</button>
+            <button data-command="stop" class="wide">Stop</button>
+          </div>
+          <p class="hint">Hold <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to drive.</p>
+          <dl class="facts">
+            <dt>Speed</dt><dd id="speed">–</dd>
+            <dt>Turn</dt><dd id="turn">–</dd>
+          </dl>
+        </section>
+
+        <section class="block">
+          <h2>World</h2>
+          <div class="actions">
+            <button data-place="bone">Place bone</button>
+            <button data-place="person">Place person</button>
+            <button id="reset" class="wide" title="Restarts the simulator and the core">Reset everything</button>
+          </div>
+        </section>
+
+        <section class="block">
+          <h2>Sensors</h2>
+          <dl class="facts" id="sensors"></dl>
+        </section>
+
+        <section class="block">
+          <h2>Motors</h2>
+          <table class="joints">
+            <thead><tr><th>Motor</th><th>Angle</th><th>Load</th></tr></thead>
+            <tbody id="joints"></tbody>
+          </table>
+        </section>
+      </aside>
     </main>
 
-    <aside class="panel">
-      <section>
-        <button id="estop" class="estop" type="button">Not-Aus</button>
-        <dl class="facts">
-          <dt>Posture</dt><dd id="posture">–</dd>
-          <dt>Speed</dt><dd id="speed">–</dd>
-          <dt>Turn rate</dt><dd id="turn">–</dd>
-        </dl>
-      </section>
-
-      <section>
-        <h2>Speak <small>to the core</small></h2>
-        <div class="buttons" id="voice">
-          <button data-word="such">such</button>
-          <button data-word="hier">hier</button>
-          <button data-word="sitz">sitz</button>
-          <button data-word="platz">platz</button>
-          <button data-word="auf">auf</button>
-          <button data-word="brav">brav</button>
+    <section class="dock" id="dock" aria-label="Logs">
+      <div class="dock-grip" id="dock-grip" role="separator" aria-orientation="horizontal" aria-label="Resize the log panel" tabindex="0"></div>
+      <header class="dock-bar">
+        <h2>Logs</h2>
+        <div class="segmented compact" id="log-sources" role="group" aria-label="Log source">
+          <button data-source="all" class="active">All <span></span></button>
+          <button data-source="core">Core <span></span></button>
+          <button data-source="sim">Sim host <span></span></button>
+          <button data-source="uart">UART <span></span></button>
         </div>
-        <h2>Show gesture <small>to the camera</small></h2>
-        <div class="segmented" id="gesture">
-          <button data-gesture="" class="active">none</button>
-          <button data-gesture="auf">auf</button>
-          <button data-gesture="sitz">sitz</button>
-          <button data-gesture="platz">platz</button>
-        </div>
-        <p id="core-hint" class="hint">Start the sim host with <code>--core</code> to let the core react.</p>
-      </section>
-
-      <section>
-        <h2>Pico commands <small>bypass the core</small></h2>
-        <div class="buttons" id="pico">
-          <button data-command="auf">auf</button>
-          <button data-command="sitz">sitz</button>
-          <button data-command="platz">platz</button>
-          <button data-command="brav">brav</button>
-          <button data-command="signal_found">found</button>
-          <button data-rotate="-90">↺ 90°</button>
-          <button data-rotate="90">↻ 90°</button>
-          <button data-command="stop">stop</button>
-          <button data-command="vorderbeine_runter">vorne runter</button>
-        </div>
-        <p class="hint">Drive with <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or the arrow keys.</p>
-      </section>
-
-      <section>
-        <h2>Joints</h2>
-        <table class="joints">
-          <thead><tr><th>Motor</th><th>Angle</th><th>Torque</th></tr></thead>
-          <tbody id="joints"></tbody>
-        </table>
-      </section>
-
-      <section>
-        <h2>Sensors</h2>
-        <dl class="facts" id="sensors"></dl>
-      </section>
-
-      <section>
-        <h2>World</h2>
-        <div class="buttons">
-          <button data-place="bone">place bone</button>
-          <button data-place="person">place person</button>
-          <button id="reset">reset</button>
-        </div>
-        <label class="check"><input type="checkbox" id="follow" checked /> camera follows the dog</label>
-      </section>
-
-      <section>
-        <h2>UART <small>last commands to the Pico</small></h2>
-        <ol id="uart-log" class="log"></ol>
-      </section>
-    </aside>
+        <label class="select">
+          <span class="visually-hidden">Level</span>
+          <select id="log-level">
+            <option value="DEBUG">Debug and up</option>
+            <option value="INFO" selected>Info and up</option>
+            <option value="WARNING">Warnings and up</option>
+            <option value="ERROR">Errors only</option>
+          </select>
+        </label>
+        <input id="log-search" class="search" type="search" placeholder="Filter lines" aria-label="Filter log lines" />
+        <label class="toggle"><input type="checkbox" id="log-follow" checked /> Follow</label>
+        <button id="log-clear" class="quiet">Clear</button>
+      </header>
+      <div class="log-list" id="log-list" role="log" aria-live="off">
+        <p class="empty" id="log-empty">No log lines yet. They appear here as the simulator and the core run.</p>
+      </div>
+    </section>
 
     <script type="module" src="/src/main.js"></script>
   </body>

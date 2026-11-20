@@ -113,6 +113,38 @@ From the first, drawing-based model (iteration 1), still true:
 6. **A camera looking straight ahead misses the floor near the dog.** Tilted 20° down, it
    sees the floor from about 0.3 m. In the eye socket, the snout hid a quarter of the image.
 
+## The world
+
+`scene.xml` holds the floor, the home spot, the bone and the person, made to look like the
+competition so the core's detector works on the rendered images (see
+[core integration](core-integration.md#findings-for-the-core-team)):
+
+- **Bone**: the scan of a real bone (`meshes/STL/Knochen.stl`, 685,000 triangles, 29 cm).
+  `scripts/prepare_bone.py` lays it flat, scales it to the competition bone's 21 cm and
+  reduces it to `Knochen_sim.stl` (4,000 triangles). White, slightly glossy.
+- **Floor**: the playing field's dark, glossy, scratched linoleum, colour measured from a photo
+  of the taped field; `floor.png` is made by `scripts/make_floor_texture.py`.
+- **Light**: a bright headlight and a light sky, like an indoor room.
+- **Field** (photo of the taped field and task drawing): the dog starts in a 20 × 50 cm start
+  field in the middle of a taped circle of 1.5 m radius (the interaction area). The search
+  area is a 30° segment with its tip at the dog, behind it: two tape lines from the circle to
+  5 m, where the pylons stand. The circle is open between the lines; there is no far arc.
+  White tape, 5 cm. `scripts/build_field.py` generates it into `scene.xml`.
+- **Viewer-only marker** (geom group 4): the home disk. It is not on the real floor, so the
+  dog's camera does not render it.
+
+```bash
+uv run --no-project --with trimesh --with fast-simplification python apps/sim-host/scripts/prepare_bone.py
+```
+
+```bash
+.venv-core/bin/python apps/sim-host/scripts/make_floor_texture.py
+```
+
+```bash
+.venv/bin/python apps/sim-host/scripts/build_field.py
+```
+
 ## Changing the model
 
 - Open `dog.xml` in MuJoCo's own viewer to look at it alone: `uv run python -m mujoco.viewer --mjcf apps/sim-host/src/dog_sim_host/assets/scene.xml`.

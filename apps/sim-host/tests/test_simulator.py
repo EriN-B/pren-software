@@ -1,20 +1,20 @@
 """Checks the simulated robot behaves like the core expects the real one to."""
 
 import json
+import logging
 import os
 import threading
-from enum import Enum
+from types import SimpleNamespace
 
+import numpy as np
 import pytest
-from dog_sim_host.core_adapters import (
-    CommandInbox,
-    SimAudioModel,
-    SimGestureModel,
-    SimObjectModel,
-)
+from dog_sim_host.app import Simulator
+from dog_sim_host.core_adapters import GESTURE_THREAD, SimCamera, project
+from dog_sim_host.core_runner import CoreRunner
+from dog_sim_host.log_buffer import LogBuffer
 from dog_sim_host.pico import PicoFirmware
 from dog_sim_host.uart_link import PtyLink
-from dog_sim_host.world import World
+from dog_sim_host.world import DETECTABLE, World
 
 
 @pytest.fixture
@@ -229,38 +229,99 @@ def test_uart_link_keeps_whole_lines_when_nobody_reads():
         link.close()
 
 
-def test_camera_sees_bone_ahead_and_not_behind():
+def test_true_position_of_the_bone_in_the_dogs_image():
     world = World()
-    detector = SimObjectModel(world)
-    assert detector.get_objects(None).boxes.xyxy.tolist() == []  # starts behind
-
+    assert project(world.snapshot, DETECTABLE["bone"]) is None  # starts behind
     world.place("bone", 0.8, 0.0)
-    result = detector.get_objects(None)
-    ((x1, _y1, x2, y2),) = result.boxes.xyxy.tolist()
-    assert result.names[int(result.boxes.cls.tolist()[0])] == "bone"
+    x1, _y1, x2, y2 = project(world.snapshot, DETECTABLE["bone"])
     assert (x1 + x2) / 2 == pytest.approx(320, abs=10)  # straight ahead: centred
     assert y2 > 240  # on the floor, below the horizon
 
 
-def test_camera_finds_person_and_both_shoes():
+def test_core_camera_gives_gestures_the_webcam_and_states_the_world():
+    webcam = SimpleNamespace(frame=np.full((480, 640, 3), 1, np.uint8))
+    camera = SimCamera(webcam)
+    camera.rendered = np.full((480, 640, 3), 2, np.uint8)
+    seen = {}
+
+    def read(name):
+        seen[name] = int(camera.read()[1][0, 0, 0])
+
+    for name in (GESTURE_THREAD, "searching"):
+        thread = threading.Thread(target=read, args=(name,), name=name)
+        thread.start()
+        thread.join()
+    assert seen == {GESTURE_THREAD: 1, "searching": 2}
+    assert SimCamera(None).read() == (False, None)  # nothing rendered yet
+
+
+def test_rendered_camera_shows_the_bone(tmp_path):
+    try:
+        simulator = Simulator(tmp_path / "uart", with_core=True, webcam=None)
+    except Exception as error:  # noqa: BLE001 - no OpenGL, e.g. on a headless CI runner
+        pytest.skip(f"cannot render here: {error}")
+    try:
+        world = simulator.world
+        world.place("bone", 0.8, 0.0)
+        world.advance(0.1, simulator.pico.control)
+        image = simulator.render_camera()
+        assert image.shape == (480, 640, 3)
+        x1, y1, x2, y2 = (round(v) for v in project(world.snapshot, DETECTABLE["bone"]))
+        bone = image[y1:y2, x1:x2].mean()
+        floor = image[y1:y2, : max(x1 - 40, 1)].mean()  # same rows, left of the bone
+        assert bone > floor + 5  # the white bone is lighter than the light-grey floor
+    finally:
+        simulator.uart.close()
+
+
+def test_core_detections_are_read_from_the_cores_log(tmp_path):
+    runner = CoreRunner(tmp_path / "uart", webcam=None)
+    core_log = logging.getLogger("state_machine")
+    core_log.setLevel(logging.INFO)  # as dog_core.states.startup does
+    # Exactly how dog_core.states.searching and perform_hier log their boxes.
+    core_log.info(
+        "Bone bounding box: x1=%.1f, y1=%.1f, x2=%.1f, y2=%.1f, confidence=%.3f",
+        *(278.0, 280.0, 362.0, 412.0),
+        0.47,
+    )
+    core_log.info(
+        "%s bounding box: x1=1.0, y1=2.0, x2=3.0, y2=4.0, confidence=0.800", "Shoe"
+    )
+    core_log.info("Currently in state: searching (such)")
+    assert runner.detections() == [
+        {"label": "bone", "box": [278.0, 280.0, 362.0, 412.0], "confidence": 0.47},
+        {"label": "shoe", "box": [1.0, 2.0, 3.0, 4.0], "confidence": 0.8},
+    ]
+
+
+def test_bone_can_be_placed_sideways():
     world = World()
-    world.place("person", 1.2, 0.0)
-    result = SimObjectModel(world).get_people_and_shoes(None)
-    labels = [result.names[int(c)] for c in result.boxes.cls.tolist()]
-    assert sorted(labels) == ["person", "shoe", "shoe"]
+    world.place("bone", 1.0, 0.0, yaw=90)
+    world.advance(0.5, lambda: None)
+    lengthwise = world.data.body("bone").xmat.reshape(3, 3)[
+        :, 0
+    ]  # the scan's long side
+    assert abs(lengthwise[1]) > 0.99  # now across the dog's view, along y
+    height = world.data.body("bone").xpos[2]
+    assert height == pytest.approx(0.022, abs=0.004)  # still lying flat
 
 
-def test_voice_and_gesture_come_from_the_inbox():
-    inbox = CommandInbox()
-    inbox.say("such")
-    stop = threading.Event()
-    stream = SimAudioModel(inbox).get_transcription_stream(None, None, stop)
-    assert next(stream) == "such"
-    stop.set()
-    assert list(stream) == []
-
-    gesture_type = Enum("GestureType", {"AUF": "auf", "SITZ": "sitz", "NONE": "none"})
-    gestures = SimGestureModel(inbox, gesture_type)
-    assert gestures.get_gesture(None, 0) is gesture_type.NONE
-    inbox.gesture = "sitz"
-    assert gestures.get_gesture(None, 0) is gesture_type.SITZ
+def test_log_buffer_collects_core_uart_and_sim_lines():
+    buffer = LogBuffer()
+    buffer.attach()
+    try:
+        core = logging.getLogger("state_machine")
+        core.setLevel(logging.INFO)  # as dog_core.states.startup does
+        core.info("Currently in state: %s", "searching")
+        logging.getLogger("dog_sim_host.uart").info('{"command":"stop"}')
+        logging.getLogger("dog_sim_host").warning("Pico ignores bad message")
+        seen = [(e["source"], e["level"], e["message"]) for e in buffer.since(0)]
+        assert ("core", "INFO", "Currently in state: searching") in seen
+        assert ("uart", "INFO", '{"command":"stop"}') in seen
+        assert ("sim", "WARNING", "Pico ignores bad message") in seen
+        last = buffer.last_seq
+        core.info("later")
+        assert [e["message"] for e in buffer.since(last)] == ["later"]
+    finally:
+        logging.getLogger().removeHandler(buffer)
+        logging.getLogger("dog_sim_host.uart").removeHandler(buffer)

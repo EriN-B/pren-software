@@ -11,3 +11,7 @@ site/
 
 # macOS
 .DS_Store
+
+# Real dog core for the simulator (apps/sim-host/scripts/core-env.sh)
+.core/
+.venv-core/
