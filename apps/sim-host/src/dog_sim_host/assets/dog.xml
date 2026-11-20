@@ -1,20 +1,23 @@
 <!--
-  The dog robot, modelled from the team's flipchart drawing.
+  The dog robot: body and head from the team's flipchart drawing, legs from the CAD parts
+  of the leg test setup (meshes in assets/meshes/STL, millimetres).
 
   Axes: x forwards, y to the dog's left, z up. Units: metres, kilograms, radians.
-  All dimensions and masses are PLACEHOLDERS until the mechanical design has real
-  numbers; see docs/simulator/robot-model.md for the list and where each one is used.
+  Leg parts come from CAD. Torso, head, tail and all masses are still PLACEHOLDERS;
+  see docs/simulator/robot-model.md for the list and where each one is used.
 
   Parts from the drawing:
     torso        box body with emergency stop ("Not") on top and speaker ("Woof!") on the side
     head         pans on "Servo-Kopf"; carries the camera module, ears and the LED matrix
     tail         wags on "Servo-Schwanz"
-    4 legs       "Bein", splayed like in the drawing, each on a hip axle ("Achse_Grundkoerper")
-    leg drive    per leg a servo ("Servo-Beine 4x", MG946R) turns a crank; a linkage bar
-                 ("linkage") joins crank and leg into a parallelogram, so leg angle =
-                 servo angle; a tension spring ("Zugfeder") carries part of the weight
+    4 legs       per leg a four-bar linkage on a mounting plate (Grundkörper): the servo
+                 (MG946R) turns the drive strut (Antriebsstütze), the linkage swings on the
+                 hip axle, the leg (Bein) joins both and carries the wheel (Rad). The leg
+                 stays nearly upright while the servo raises or lowers the body. A tension
+                 spring (Zugfeder) between linkage and leg. Generated from the CAD hole
+                 positions by apps/sim-host/scripts/build_legs.py.
     front wheels driven by DC motors through the H-bridge, with encoders left/right
-    rear casters passive, modelled as frictionless balls
+    rear wheels  passive, touching the floor as frictionless balls
     sensors      IMU in the torso, ultrasonic sensor on the chest
 -->
 <mujoco model="dog">
@@ -29,37 +32,51 @@
         <geom contype="0" conaffinity="0" mass="0"/>
       </default>
 
-      <default class="hip">
-        <!-- Passive leg pivot on the body; the servo moves it through the linkage. -->
-        <joint type="hinge" axis="0 1 0" damping="0.1"/>
+      <default class="part">
+        <!-- CAD part: drawn from its STL, mass from its volume (3D printed PLA, assumed). -->
+        <geom type="mesh" contype="0" conaffinity="0" density="1250" rgba="0.82 0.8 0.76 1"/>
       </default>
       <default class="servo">
-        <!-- MG946R: about 13 kg cm = 1.3 Nm stall torque at 6 V. Angle 0 = drawing pose. -->
-        <joint type="hinge" axis="0 1 0" range="-1.2 1.2" damping="0.3"/>
-        <position kp="25" forcerange="-1.3 1.3" ctrlrange="-1.2 1.2"/>
+        <!-- MG946R: about 13 kg cm = 1.3 Nm stall torque at 6 V. Angle 0 = auf (crank
+             40 degrees below horizontal, legs nearly stretched); positive lowers the body.
+             Range from the four-bar: beyond it a leg can snap through. -->
+        <joint type="hinge" range="-0.6 0.8" damping="0.3"/>
+        <position kp="25" forcerange="-1.3 1.3" ctrlrange="-0.6 0.8"/>
       </default>
       <default class="pin">
         <joint type="hinge" axis="0 1 0" damping="0.01"/>
       </default>
-      <default class="leg">
-        <geom type="capsule" size="0.014" mass="0.12" rgba="0.82 0.8 0.76 1"/>
+      <default class="knee">
+        <!-- Stop at 80 degrees so the four-bar cannot snap through into its crossed pose. -->
+        <joint type="hinge" axis="0 1 0" damping="0.01" range="-1.4 1.4"/>
       </default>
-      <default class="link">
-        <geom type="capsule" size="0.007" mass="0.02" rgba="0.55 0.58 0.62 1"/>
+      <default class="caster">
+        <!-- priority makes the frictionless condim win over the floor's. -->
+        <geom type="sphere" size="0.02" condim="1" priority="1" mass="0.005" rgba="0 0 0 0"/>
       </default>
 
       <default class="wheel">
         <joint type="hinge" axis="0 1 0" damping="0.01"/>
         <!-- DC gear motor: target wheel speed in rad/s, torque limited. -->
         <velocity kv="0.3" forcerange="-0.6 0.6" ctrlrange="-30 30"/>
-        <geom type="cylinder" size="0.05 0.0125" euler="1.5708 0 0" mass="0.12"
-              friction="1.2 0.01 0.0001" rgba="0.16 0.16 0.18 1"/>
+        <!-- Contact shape of the Rad (r 20 mm, 5 mm wide); the mesh is drawn on top. -->
+        <geom type="cylinder" size="0.02 0.0025" euler="1.5708 0 0" mass="0.005"
+              friction="1.2 0.01 0.0001" rgba="0.16 0.16 0.18 0"/>
       </default>
     </default>
   </default>
 
+  <asset>
+    <mesh name="plate" file="meshes/STL/Grundkörper.stl" scale="0.001 0.001 0.001" inertia="exact"/>
+    <mesh name="plate_mirrored" file="meshes/STL/Grundkörper.stl" scale="0.001 0.001 -0.001" inertia="exact"/>
+    <mesh name="crank" file="meshes/STL/Antriebsstütze.stl" scale="0.001 0.001 0.001" inertia="exact"/>
+    <mesh name="linkage" file="meshes/STL/linkage.stl" scale="0.001 0.001 0.001" inertia="exact"/>
+    <mesh name="leg" file="meshes/STL/Bein.stl" scale="0.001 0.001 0.001" inertia="exact"/>
+    <mesh name="wheel" file="meshes/STL/Rad.stl" scale="0.001 0.001 0.001" inertia="exact"/>
+  </asset>
+
   <worldbody>
-    <body name="dog" childclass="dog" pos="0 0 0.28">
+    <body name="dog" childclass="dog" pos="0 0 0.2611">
       <freejoint name="root"/>
       <geom name="torso" type="box" size="0.2 0.09 0.07" mass="2.0"/>
       <site name="imu" pos="0 0 0" size="0.01"/>
@@ -94,112 +111,117 @@
         <geom name="tail" type="capsule" fromto="0 0 0 -0.05 0 0.12" size="0.012" mass="0.03"/>
       </body>
 
-      <!-- Legs: front ones end in the driven wheels, rear ones in casters (priority makes
-           their frictionless condim win over the floor). Generated with a = 0.3 rad splay,
-           crank 0.07 m, servo shaft 0.045 m from the hip axle towards the body centre. -->
-      <body name="leg_front_left" pos="0.14 0.125 -0.03">
-        <joint name="hip_front_left" class="hip"/>
-        <geom name="leg_front_left" class="leg" fromto="0 0 0 0.0591 0 -0.1911"/>
-        <site name="leg_attach_front_left" pos="0.0207 0 -0.0669"/>
-        <site name="spring_leg_front_left" pos="0.0355 0 -0.1146"/>
-        <body name="wheel_left" pos="0.0591 0 -0.1911">
-          <joint name="wheel_left" class="wheel"/>
-          <geom name="wheel_left" class="wheel" pos="0 0.03 0"/>
-          <geom name="motor_left" class="visual" type="cylinder" size="0.014 0.025" pos="0 -0.02 0" zaxis="0 1 0" rgba="0.6 0.62 0.66 1"/>
+      <!-- legs:begin (generated by apps/sim-host/scripts/build_legs.py; edit that, not this) -->
+      <geom name="plate_front_left" class="part" mesh="plate_mirrored" pos="0.15757 0.1 -0.083424" quat="0.69712 0.69712 -0.11843 0.11843"/>
+      <body name="crank_front_left" pos="0.088955 0.12 -0.081104">
+        <joint name="servo_front_left" class="servo" axis="0 -1 0"/>
+        <geom name="crank_front_left" class="part" mesh="crank" pos="0 -0.004 0" quat="-0.24184 0.24184 0.66446 0.66446"/>
+        <site name="crank_end_front_left" pos="0.082273 0 -0.069035"/>
+      </body>
+      <body name="linkage_front_left" pos="0.1 0.12 -0.04">
+        <joint name="hip_front_left" class="pin"/>
+        <geom name="linkage_front_left" class="part" mesh="linkage" pos="0 -0.007 0" quat="-0.25846 0.25846 0.65818 0.65818"/>
+        <site name="spring_link_front_left" pos="0.04156 0 -0.033132"/>
+        <body name="leg_front_left" pos="0.071228 0 -0.066139">
+          <joint name="knee_front_left" class="knee"/>
+          <geom name="leg_front_left" class="part" mesh="leg" pos="0.0075 0.004 0.025" quat="0.5 -0.5 0.5 0.5"/>
+          <site name="leg_attach_front_left" pos="0 0 -0.044"/>
+          <site name="spring_leg_front_left" pos="0.0035 0 0.025"/>
+          <body name="wheel_left" pos="0 0 -0.135">
+            <joint name="wheel_left" class="wheel"/>
+            <geom name="wheel_left" class="wheel" pos="0 0.0175 0"/>
+            <geom name="rad_front_left" class="part" mesh="wheel" pos="0 0.015 0" quat="0.70711 -0.70711 0 0"/>
+          </body>
         </body>
       </body>
-      <body name="crank_front_left" pos="0.095 0.105 -0.03">
-        <joint name="servo_front_left" class="servo"/>
-        <geom name="crank_front_left" class="link" fromto="0 0 0 0.0207 0 -0.0669"/>
-        <body name="linkage_front_left" pos="0.0207 0 -0.0669">
-          <joint name="linkage_front_left" class="pin"/>
-          <geom name="linkage_front_left" class="link" fromto="0 0 0 0.045 0 0"/>
-          <site name="linkage_end_front_left" pos="0.045 0.02 0"/>
+      <geom name="plate_front_right" class="part" mesh="plate" pos="0.15757 -0.1 -0.083424" quat="0.69712 0.69712 -0.11843 0.11843"/>
+      <body name="crank_front_right" pos="0.088955 -0.12 -0.081104">
+        <joint name="servo_front_right" class="servo" axis="0 -1 0"/>
+        <geom name="crank_front_right" class="part" mesh="crank" pos="0 0.004 0" quat="0.24184 0.24184 -0.66446 0.66446"/>
+        <site name="crank_end_front_right" pos="0.082273 0 -0.069035"/>
+      </body>
+      <body name="linkage_front_right" pos="0.1 -0.12 -0.04">
+        <joint name="hip_front_right" class="pin"/>
+        <geom name="linkage_front_right" class="part" mesh="linkage" pos="0 0.007 0" quat="0.25846 0.25846 -0.65818 0.65818"/>
+        <site name="spring_link_front_right" pos="0.036117 0 -0.038995"/>
+        <body name="leg_front_right" pos="0.071228 0 -0.066139">
+          <joint name="knee_front_right" class="knee"/>
+          <geom name="leg_front_right" class="part" mesh="leg" pos="-0.0075 -0.004 0.025" quat="-0.5 -0.5 -0.5 0.5"/>
+          <site name="leg_attach_front_right" pos="0 0 -0.044"/>
+          <site name="spring_leg_front_right" pos="-0.0035 0 0.025"/>
+          <body name="wheel_right" pos="0 0 -0.135">
+            <joint name="wheel_right" class="wheel"/>
+            <geom name="wheel_right" class="wheel" pos="0 -0.0175 0"/>
+            <geom name="rad_front_right" class="part" mesh="wheel" pos="0 -0.015 0" quat="0.70711 0.70711 0 0"/>
+          </body>
         </body>
       </body>
-      <site name="spring_body_front_left" pos="0.040 0.125 -0.055"/>
-      <body name="leg_front_right" pos="0.14 -0.125 -0.03">
-        <joint name="hip_front_right" class="hip"/>
-        <geom name="leg_front_right" class="leg" fromto="0 0 0 0.0591 0 -0.1911"/>
-        <site name="leg_attach_front_right" pos="0.0207 0 -0.0669"/>
-        <site name="spring_leg_front_right" pos="0.0355 0 -0.1146"/>
-        <body name="wheel_right" pos="0.0591 0 -0.1911">
-          <joint name="wheel_right" class="wheel"/>
-          <geom name="wheel_right" class="wheel" pos="0 -0.03 0"/>
-          <geom name="motor_right" class="visual" type="cylinder" size="0.014 0.025" pos="0 0.02 0" zaxis="0 1 0" rgba="0.6 0.62 0.66 1"/>
+      <geom name="plate_rear_left" class="part" mesh="plate" pos="-0.15757 0.1 -0.083424" quat="-0.11843 0.11843 0.69712 0.69712"/>
+      <body name="crank_rear_left" pos="-0.088955 0.12 -0.081104">
+        <joint name="servo_rear_left" class="servo" axis="0 1 0"/>
+        <geom name="crank_rear_left" class="part" mesh="crank" pos="0 -0.004 0" quat="0.66446 -0.66446 -0.24184 -0.24184"/>
+        <site name="crank_end_rear_left" pos="-0.082273 0 -0.069035"/>
+      </body>
+      <body name="linkage_rear_left" pos="-0.1 0.12 -0.04">
+        <joint name="hip_rear_left" class="pin"/>
+        <geom name="linkage_rear_left" class="part" mesh="linkage" pos="0 -0.007 0" quat="0.65818 -0.65818 -0.25846 -0.25846"/>
+        <site name="spring_link_rear_left" pos="-0.036117 0 -0.038995"/>
+        <body name="leg_rear_left" pos="-0.071228 0 -0.066139">
+          <joint name="knee_rear_left" class="knee"/>
+          <geom name="leg_rear_left" class="part" mesh="leg" pos="0.0075 0.004 0.025" quat="0.5 -0.5 0.5 0.5"/>
+          <site name="leg_attach_rear_left" pos="0 0 -0.044"/>
+          <site name="spring_leg_rear_left" pos="0.0035 0 0.025"/>
+          <geom name="caster_rear_left" class="caster" pos="0 0.0175 -0.135"/>
+          <geom name="rad_rear_left" class="part" mesh="wheel" pos="0 0.015 -0.135" quat="0.70711 -0.70711 0 0"/>
         </body>
       </body>
-      <body name="crank_front_right" pos="0.095 -0.105 -0.03">
-        <joint name="servo_front_right" class="servo"/>
-        <geom name="crank_front_right" class="link" fromto="0 0 0 0.0207 0 -0.0669"/>
-        <body name="linkage_front_right" pos="0.0207 0 -0.0669">
-          <joint name="linkage_front_right" class="pin"/>
-          <geom name="linkage_front_right" class="link" fromto="0 0 0 0.045 0 0"/>
-          <site name="linkage_end_front_right" pos="0.045 -0.02 0"/>
+      <geom name="plate_rear_right" class="part" mesh="plate_mirrored" pos="-0.15757 -0.1 -0.083424" quat="-0.11843 0.11843 0.69712 0.69712"/>
+      <body name="crank_rear_right" pos="-0.088955 -0.12 -0.081104">
+        <joint name="servo_rear_right" class="servo" axis="0 1 0"/>
+        <geom name="crank_rear_right" class="part" mesh="crank" pos="0 0.004 0" quat="0.66446 0.66446 -0.24184 0.24184"/>
+        <site name="crank_end_rear_right" pos="-0.082273 0 -0.069035"/>
+      </body>
+      <body name="linkage_rear_right" pos="-0.1 -0.12 -0.04">
+        <joint name="hip_rear_right" class="pin"/>
+        <geom name="linkage_rear_right" class="part" mesh="linkage" pos="0 0.007 0" quat="0.65818 0.65818 -0.25846 0.25846"/>
+        <site name="spring_link_rear_right" pos="-0.04156 0 -0.033132"/>
+        <body name="leg_rear_right" pos="-0.071228 0 -0.066139">
+          <joint name="knee_rear_right" class="knee"/>
+          <geom name="leg_rear_right" class="part" mesh="leg" pos="-0.0075 -0.004 0.025" quat="-0.5 -0.5 -0.5 0.5"/>
+          <site name="leg_attach_rear_right" pos="0 0 -0.044"/>
+          <site name="spring_leg_rear_right" pos="-0.0035 0 0.025"/>
+          <geom name="caster_rear_right" class="caster" pos="0 -0.0175 -0.135"/>
+          <geom name="rad_rear_right" class="part" mesh="wheel" pos="0 -0.015 -0.135" quat="0.70711 0.70711 0 0"/>
         </body>
       </body>
-      <site name="spring_body_front_right" pos="0.040 -0.125 -0.055"/>
-      <body name="leg_rear_left" pos="-0.14 0.125 -0.03">
-        <joint name="hip_rear_left" class="hip"/>
-        <geom name="leg_rear_left" class="leg" fromto="0 0 0 -0.0684 0 -0.2211"/>
-        <site name="leg_attach_rear_left" pos="-0.0207 0 -0.0669"/>
-        <site name="spring_leg_rear_left" pos="-0.0355 0 -0.1146"/>
-        <geom name="caster_rear_left" type="sphere" size="0.02" pos="-0.0684 0 -0.2211" condim="1" priority="1" mass="0.02" rgba="0.16 0.16 0.18 1"/>
-      </body>
-      <body name="crank_rear_left" pos="-0.095 0.105 -0.03">
-        <joint name="servo_rear_left" class="servo"/>
-        <geom name="crank_rear_left" class="link" fromto="0 0 0 -0.0207 0 -0.0669"/>
-        <body name="linkage_rear_left" pos="-0.0207 0 -0.0669">
-          <joint name="linkage_rear_left" class="pin"/>
-          <geom name="linkage_rear_left" class="link" fromto="0 0 0 -0.045 0 0"/>
-          <site name="linkage_end_rear_left" pos="-0.045 0.02 0"/>
-        </body>
-      </body>
-      <site name="spring_body_rear_left" pos="-0.040 0.125 -0.055"/>
-      <body name="leg_rear_right" pos="-0.14 -0.125 -0.03">
-        <joint name="hip_rear_right" class="hip"/>
-        <geom name="leg_rear_right" class="leg" fromto="0 0 0 -0.0684 0 -0.2211"/>
-        <site name="leg_attach_rear_right" pos="-0.0207 0 -0.0669"/>
-        <site name="spring_leg_rear_right" pos="-0.0355 0 -0.1146"/>
-        <geom name="caster_rear_right" type="sphere" size="0.02" pos="-0.0684 0 -0.2211" condim="1" priority="1" mass="0.02" rgba="0.16 0.16 0.18 1"/>
-      </body>
-      <body name="crank_rear_right" pos="-0.095 -0.105 -0.03">
-        <joint name="servo_rear_right" class="servo"/>
-        <geom name="crank_rear_right" class="link" fromto="0 0 0 -0.0207 0 -0.0669"/>
-        <body name="linkage_rear_right" pos="-0.0207 0 -0.0669">
-          <joint name="linkage_rear_right" class="pin"/>
-          <geom name="linkage_rear_right" class="link" fromto="0 0 0 -0.045 0 0"/>
-          <site name="linkage_end_rear_right" pos="-0.045 -0.02 0"/>
-        </body>
-      </body>
-      <site name="spring_body_rear_right" pos="-0.040 -0.125 -0.055"/>
-rear_len 0.2314025480461426 hip height 0.2410672978251212
+      <!-- legs:end -->
     </body>
   </worldbody>
 
   <equality>
-    <!-- Close each parallelogram: the end of the linkage bar is pinned to the leg. -->
-    <connect site1="linkage_end_front_left" site2="leg_attach_front_left"/>
-    <connect site1="linkage_end_front_right" site2="leg_attach_front_right"/>
-    <connect site1="linkage_end_rear_left" site2="leg_attach_rear_left"/>
-    <connect site1="linkage_end_rear_right" site2="leg_attach_rear_right"/>
+    <!-- Close each four-bar: the end of the drive strut is pinned to the leg. A stiffer
+         solref than the default keeps the pin within a fraction of a millimetre. -->
+    <connect site1="crank_end_front_left" site2="leg_attach_front_left" solref="0.005 1"/>
+    <connect site1="crank_end_front_right" site2="leg_attach_front_right" solref="0.005 1"/>
+    <connect site1="crank_end_rear_left" site2="leg_attach_rear_left" solref="0.005 1"/>
+    <connect site1="crank_end_rear_right" site2="leg_attach_rear_right" solref="0.005 1"/>
   </equality>
 
   <tendon>
     <!-- Tension springs: pull only once stretched past the first springlength value's band
          (force = 150 N/m * (length - 0.14 m) when longer, nothing when shorter).
          Tuned so the servos hold about 0.2 Nm standing instead of 0.5 Nm. -->
-    <spatial name="spring_front_left" stiffness="150" springlength="0 0.14" width="0.003" rgba="0.85 0.75 0.3 1">
-      <site site="spring_body_front_left"/><site site="spring_leg_front_left"/>
+    <spatial name="spring_front_left" stiffness="600" springlength="0 0.02" width="0.003" rgba="0.85 0.75 0.3 1">
+      <site site="spring_link_front_left"/><site site="spring_leg_front_left"/>
     </spatial>
-    <spatial name="spring_front_right" stiffness="150" springlength="0 0.14" width="0.003" rgba="0.85 0.75 0.3 1">
-      <site site="spring_body_front_right"/><site site="spring_leg_front_right"/>
+    <spatial name="spring_front_right" stiffness="600" springlength="0 0.02" width="0.003" rgba="0.85 0.75 0.3 1">
+      <site site="spring_link_front_right"/><site site="spring_leg_front_right"/>
     </spatial>
-    <spatial name="spring_rear_left" stiffness="150" springlength="0 0.14" width="0.003" rgba="0.85 0.75 0.3 1">
-      <site site="spring_body_rear_left"/><site site="spring_leg_rear_left"/>
+    <spatial name="spring_rear_left" stiffness="600" springlength="0 0.02" width="0.003" rgba="0.85 0.75 0.3 1">
+      <site site="spring_link_rear_left"/><site site="spring_leg_rear_left"/>
     </spatial>
-    <spatial name="spring_rear_right" stiffness="150" springlength="0 0.14" width="0.003" rgba="0.85 0.75 0.3 1">
-      <site site="spring_body_rear_right"/><site site="spring_leg_rear_right"/>
+    <spatial name="spring_rear_right" stiffness="600" springlength="0 0.02" width="0.003" rgba="0.85 0.75 0.3 1">
+      <site site="spring_link_rear_right"/><site site="spring_leg_rear_right"/>
     </spatial>
   </tendon>
 

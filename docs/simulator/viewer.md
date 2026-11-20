@@ -17,8 +17,10 @@ It simulates nothing itself, so it can be restyled freely without changing behav
 
 ## How a frame is drawn
 
-1. On connect the sim host sends a **scene** message: every geom's shape, size and colour.
-   `scene.js` builds one mesh each (boxes get rounded edges).
+1. On connect the sim host sends a **scene** message: every geom's shape, size and colour,
+   plus the triangles of every CAD mesh (once, shared by all geoms that use it).
+   `scene.js` builds one three.js mesh each (boxes get rounded edges, CAD parts flat shading).
+   Geoms with alpha 0, like the wheels' contact shapes, are not drawn.
 2. About 30 times a second a **frame** message moves every mesh to MuJoCo's pose. It also places
    the dog's camera and carries the joint, sensor and spring readings.
 3. The page renders the main view, then the scene again from the dog's camera into the inset.

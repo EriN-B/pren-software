@@ -11,7 +11,7 @@ Server to browser:
 Browser to server: the `ClientMessage` types below.
 """
 
-from typing import Literal, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 PORT = 8780
 
@@ -21,14 +21,23 @@ class Geom(TypedDict):
 
     name: str
     body: str
-    type: Literal["plane", "sphere", "capsule", "ellipsoid", "cylinder", "box"]
+    type: Literal["plane", "sphere", "capsule", "ellipsoid", "cylinder", "box", "mesh"]
     size: list[float]
     rgba: list[float]
+    mesh: NotRequired[str]  # key into SceneMessage.meshes, only for type "mesh"
+
+
+class Mesh(TypedDict):
+    """Triangles of a CAD part in metres, in the frame of the geoms that use it."""
+
+    vertices: list[float]  # x, y, z, x, y, z, ...
+    faces: list[int]  # three vertex indices per triangle
 
 
 class SceneMessage(TypedDict):
     type: Literal["scene"]
     geoms: list[Geom]
+    meshes: dict[str, Mesh]
 
 
 class Joint(TypedDict):

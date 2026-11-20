@@ -13,6 +13,7 @@ import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeom
 
 /** @typedef {import("./protocol.js").Geom} Geom */
 /** @typedef {import("./protocol.js").SceneMessage} SceneMessage */
+/** @typedef {import("./protocol.js").Mesh} Mesh */
 /** @typedef {import("./protocol.js").FrameMessage} FrameMessage */
 
 THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
@@ -107,8 +108,11 @@ export class SimScene {
    */
   build(message) {
     this.group.clear();
+    /** @type {Map<string, THREE.BufferGeometry>} */
+    const parts = new Map();
+    for (const [name, part] of Object.entries(message.meshes ?? {})) parts.set(name, partGeometry(part));
     this.meshes = message.geoms.map((geom) => {
-      const mesh = createMesh(geom);
+      const mesh = createMesh(geom, parts);
       this.group.add(mesh);
       return mesh;
     });
@@ -237,11 +241,26 @@ export class SimScene {
 }
 
 /**
+ * Turn a CAD part's triangles into a flat-shaded geometry (sharp edges stay sharp).
+ * @param {Mesh} part
+ * @returns {THREE.BufferGeometry}
+ */
+function partGeometry(part) {
+  const indexed = new THREE.BufferGeometry();
+  indexed.setAttribute("position", new THREE.Float32BufferAttribute(part.vertices, 3));
+  indexed.setIndex(part.faces);
+  const flat = indexed.toNonIndexed();
+  flat.computeVertexNormals();
+  return flat;
+}
+
+/**
  * Build a mesh for one MuJoCo geom, with its size baked into the geometry.
  * @param {Geom} geom
+ * @param {Map<string, THREE.BufferGeometry>} parts CAD part geometries by mesh name.
  * @returns {THREE.Mesh}
  */
-function createMesh(geom) {
+function createMesh(geom, parts) {
   const [a, b, c] = geom.size;
   /** @type {THREE.BufferGeometry} */
   let shape;
@@ -261,6 +280,9 @@ function createMesh(geom) {
     case "cylinder":
       shape = new THREE.CylinderGeometry(a, a, 2 * b, 40).rotateX(Math.PI / 2);
       break;
+    case "mesh":
+      shape = parts.get(geom.mesh ?? "") ?? new THREE.BufferGeometry();
+      break;
     default: {
       const radius = Math.min(a, b, c) * 0.35;
       shape = new RoundedBoxGeometry(2 * a, 2 * b, 2 * c, 3, radius);
@@ -276,6 +298,7 @@ function createMesh(geom) {
   });
   const mesh = new THREE.Mesh(shape, material);
   mesh.name = geom.name;
+  mesh.visible = alpha > 0; // contact-only shapes (wheel tyres, casters) stay hidden
   mesh.castShadow = geom.type !== "plane" && alpha === 1;
   mesh.receiveShadow = true;
   return mesh;

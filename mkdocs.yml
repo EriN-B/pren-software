@@ -29,6 +29,7 @@ nav:
       - Overview: simulator/index.md
       - Robot model: simulator/robot-model.md
       - Pico emulator: simulator/pico-emulator.md
+      - Interface definition: simulator/interface.md
       - Core integration: simulator/core-integration.md
       - Browser viewer: simulator/viewer.md
       - Dev log: simulator/devlog.md

@@ -31,7 +31,7 @@ def dog(world):
 
 def test_stands_level(robot):
     world, _ = robot
-    assert dog(world)[2] == pytest.approx(0.27, abs=0.01)
+    assert dog(world)[2] == pytest.approx(0.26, abs=0.01)
     assert abs((world.heading_cw() + 180) % 360 - 180) < 0.5
 
 
@@ -95,16 +95,93 @@ def test_sitz_lowers_the_rear_and_loads_the_hips(robot):
     assert 0.1 < abs(rear_hip) < 1.0  # well below the servo's 1.3 Nm
 
 
-@pytest.mark.parametrize("posture", ["sitz", "platz"])
+def test_vorderbeine_runter_tilts_nose_down_and_still_drives(robot):
+    world, pico = robot
+    pico.handle({"command": "vorderbeine_runter"})
+    world.advance(2.5, pico.control)
+    assert pitch_up(world) < -0.15  # nose down, about 12 degrees
+    x = dog(world)[0]
+    for _ in range(20):  # the bone approach: slowly forwards
+        pico.handle({"command": "drive", "speed": 0.05, "angle": 0})
+        world.advance(0.1, pico.control)
+    assert dog(world)[0] - x == pytest.approx(0.1, abs=0.03)
+
+
+@pytest.mark.parametrize("posture", ["sitz", "platz", "vorderbeine_runter"])
 def test_stands_back_up_level(robot, posture):
-    # Regression: with the rear feet folding forwards the dog stayed down or tipped over.
+    # Regression: earlier legs stayed down, tipped over, or snapped into the crossed pose.
     world, pico = robot
     pico.handle({"command": posture})
     world.advance(2.5, pico.control)
     pico.handle({"command": "auf"})
     world.advance(3.0, pico.control)
-    assert dog(world)[2] == pytest.approx(0.27, abs=0.01)
+    assert dog(world)[2] == pytest.approx(0.26, abs=0.01)
     assert abs(pitch_up(world)) < 0.05
+
+
+def test_platz_lowers_the_body_on_closed_leg_linkages(robot):
+    world, pico = robot
+    pico.handle({"command": "platz"})
+    world.advance(2.5, pico.control)
+    assert dog(world)[2] < 0.2
+    for leg in ("front_left", "front_right", "rear_left", "rear_right"):
+        # The four-bar stays closed: drive strut end and leg joint coincide.
+        gap = (
+            world.data.site(f"crank_end_{leg}").xpos
+            - world.data.site(f"leg_attach_{leg}").xpos
+        )
+        assert max(abs(gap)) < 0.001
+
+
+def drive_wheels(world, pico, left, right, seconds):
+    """Send the interface definition's wheel command at 20 Hz, like the core would."""
+    for _ in range(round(seconds / 0.05)):
+        pico.handle({"command": "wheels", "left_mm_s": left, "right_mm_s": right})
+        world.advance(0.05, pico.control)
+
+
+def test_wheel_speeds_drive_straight_turn_clockwise_and_expire(robot):
+    world, pico = robot
+    drive_wheels(world, pico, 100, 100, 1.0)
+    assert dog(world)[0] == pytest.approx(0.1, abs=0.015)
+    drive_wheels(world, pico, 60, -60, 1.0)  # left faster than right: turn right
+    assert 10 < world.heading_cw() < 60
+    world.advance(0.6, pico.control)  # no more commands: the Pico stops after 0.5 s
+    x = dog(world)[0]
+    world.advance(1.0, pico.control)
+    assert dog(world)[0] == pytest.approx(x, abs=0.005)
+
+
+def test_pose_codes_move_the_legs(robot):
+    world, pico = robot
+    pico.handle({"command": "pose", "pose": "VORDERBEINE_RUNTER"})
+    world.advance(2.5, pico.control)
+    assert pitch_up(world) < -0.15
+    with pytest.raises(KeyError):
+        pico.handle({"command": "pose", "pose": "SALTO"})
+
+
+def test_measurement_packet_has_raw_sensor_values(robot):
+    world, pico = robot
+    packet = pico.measurements()
+    assert packet["accel_m_s2"][2] == pytest.approx(9.81, abs=0.1)  # gravity included
+    assert packet["distance_mm"] is None  # nothing within 4 m straight ahead
+    world.place("person", dog(world)[0] + 1.0, 0.09)  # one leg straight ahead
+    world.advance(0.1, pico.control)
+    assert 700 < pico.measurements()["distance_mm"] < 800  # 1 m minus nose and legs
+    drive_wheels(world, pico, 100, 100, 0.5)
+    packet = pico.measurements()
+    assert packet["encoder_left"]["angle_deg"] > 0  # forwards counts up
+    assert packet["encoder_left"]["rpm"] == pytest.approx(
+        47.7, abs=5
+    )  # 100 mm/s, r 20 mm
+    pico.handle({"command": "pose", "pose": "SITZ"})
+    world.advance(1.0, pico.control)
+    servos = pico.measurements()["servos_deg"]
+    assert servos["hip_rear_left"] == pytest.approx(
+        40.1, abs=0.1
+    )  # last command, 0.7 rad
+    assert servos["hip_front_left"] == 0
 
 
 def test_emergency_stop_holds_the_wheels(robot):

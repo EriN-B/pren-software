@@ -4,7 +4,7 @@ One asyncio loop does everything, in this order, every few milliseconds:
 
 1. read UART commands from the virtual serial port and hand them to the Pico emulator
 2. step the physics until simulation time catches up with the wall clock
-3. send odometry back over UART every 50 ms
+3. send measurements (every 20 ms) and odometry (every 50 ms) back over UART
 4. send a frame to every connected browser about 30 times a second
 """
 
@@ -28,7 +28,8 @@ from dog_sim_host.world import DETECTABLE, World
 
 log = logging.getLogger("dog_sim_host")
 
-ODOMETRY_PERIOD = 0.05  # s, 20 Hz like the Pico
+ODOMETRY_PERIOD = 0.05  # s, 20 Hz like the Pico (old protocol)
+MEASUREMENT_PERIOD = 0.02  # s, 50 Hz as proposed by the interface definition
 FRAME_PERIOD = 1 / 30  # s, to the browser
 MAX_CATCH_UP = 0.1  # s of physics per loop turn at most; slower machines fall behind
 GEOM_TYPES = {
@@ -38,6 +39,7 @@ GEOM_TYPES = {
     mujoco.mjtGeom.mjGEOM_ELLIPSOID: "ellipsoid",
     mujoco.mjtGeom.mjGEOM_CYLINDER: "cylinder",
     mujoco.mjtGeom.mjGEOM_BOX: "box",
+    mujoco.mjtGeom.mjGEOM_MESH: "mesh",
 }
 
 
@@ -68,10 +70,14 @@ class Simulator:
 
     async def _simulate(self) -> None:
         start = time.monotonic() - self.world.time
-        next_odometry = next_frame = 0.0
+        next_odometry = next_measurement = next_frame = 0.0
         while True:
             for message in self.uart.read_messages():
-                self.pico.handle(message)
+                try:
+                    self.pico.handle(message)
+                except (KeyError, ValueError, TypeError) as error:
+                    # The core is untrusted input: a bad command must not stop the world.
+                    log.warning("Pico ignores bad message %s: %r", message, error)
             behind = time.monotonic() - start - self.world.time
             if behind > MAX_CATCH_UP:
                 start += behind - MAX_CATCH_UP  # drop time we cannot simulate
@@ -79,11 +85,15 @@ class Simulator:
             self.world.advance(behind, self.pico.control)
             now = self.world.time
             if now < next_odometry - 1:  # the world was reset
-                next_odometry = next_frame = 0.0
+                next_odometry = next_measurement = next_frame = 0.0
                 start = time.monotonic()
             if now >= next_odometry:
                 self.uart.send(self.pico.odometry())
-                next_odometry = now + ODOMETRY_PERIOD
+                # Keep the rate: schedule from the due time, not from when we got here.
+                next_odometry = max(next_odometry + ODOMETRY_PERIOD, now)
+            if now >= next_measurement:
+                self.uart.send(self.pico.measurements())
+                next_measurement = max(next_measurement + MEASUREMENT_PERIOD, now)
             if self.clients and now >= next_frame:
                 broadcast(self.clients, json.dumps(self.frame()))
                 next_frame = now + FRAME_PERIOD
@@ -126,17 +136,34 @@ class Simulator:
         model = self.world.model
         geoms = []
         for i in range(model.ngeom):
-            rgba = model.geom_rgba[i]
-            geoms.append(
-                {
-                    "name": model.geom(i).name,
-                    "body": model.body(model.geom_bodyid[i]).name,
-                    "type": GEOM_TYPES.get(mujoco.mjtGeom(model.geom_type[i]), "box"),
-                    "size": model.geom_size[i].round(4).tolist(),
-                    "rgba": rgba.round(3).tolist(),
-                }
+            geom = {
+                "name": model.geom(i).name,
+                "body": model.body(model.geom_bodyid[i]).name,
+                "type": GEOM_TYPES.get(mujoco.mjtGeom(model.geom_type[i]), "box"),
+                "size": model.geom_size[i].round(4).tolist(),
+                "rgba": model.geom_rgba[i].round(3).tolist(),
+            }
+            if model.geom_dataid[i] >= 0 and geom["type"] == "mesh":
+                geom["mesh"] = model.mesh(model.geom_dataid[i]).name
+            geoms.append(geom)
+        return {"type": "scene", "geoms": geoms, "meshes": self.meshes()}
+
+    def meshes(self) -> dict[str, dict]:
+        """Every mesh's triangles in its geom's frame (MuJoCo has re-centred them)."""
+        model = self.world.model
+        meshes = {}
+        for i in range(model.nmesh):
+            verts = slice(
+                model.mesh_vertadr[i], model.mesh_vertadr[i] + model.mesh_vertnum[i]
             )
-        return {"type": "scene", "geoms": geoms}
+            faces = slice(
+                model.mesh_faceadr[i], model.mesh_faceadr[i] + model.mesh_facenum[i]
+            )
+            meshes[model.mesh(i).name] = {
+                "vertices": model.mesh_vert[verts].round(5).flatten().tolist(),
+                "faces": model.mesh_face[faces].flatten().tolist(),
+            }
+        return meshes
 
     def frame(self) -> dict:
         """The `dog_protocol.FrameMessage`: where everything is right now."""

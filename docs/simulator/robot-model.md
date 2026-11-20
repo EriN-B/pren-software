@@ -8,80 +8,116 @@ The robot is described in MJCF, MuJoCo's XML format:
 Axes: **x forwards, y to the dog's left, z up**. Units: metres, kilograms, radians.
 The dog starts at home (the origin) facing +x.
 
-!!! warning "Placeholder numbers"
-    Dimensions and masses come from the flipchart drawing and the part names of the CAD test
-    setup, not from measured parts. Replace them as the mechanical design firms up; every value
-    used is listed below. After a change, run `uv run pytest apps/sim-host` and update this page.
+!!! warning "Partly placeholder numbers"
+    The legs come from the CAD parts of the leg test setup (STL files in
+    `assets/meshes/STL`). Torso, head, tail, masses and the spring are still guesses from the
+    flipchart drawing. Every assumption is listed below. After a change, run
+    `uv run pytest apps/sim-host` and update this page.
 
-## From the drawing to the model
+## From the drawing and CAD to the model
 
-| Drawing / CAD part | In `dog.xml` | Notes |
+| Drawing / CAD part | In `dog.xml` | Source |
 | --- | --- | --- |
-| Grundkörper (body) | `torso` box 0.40 × 0.18 × 0.14 m, 2.0 kg | Emergency stop ("Not") and speaker ("Woof!") are decoration |
-| Kopf + Servo-Kopf | `head` body, `neck` hinge (z axis), position servo 0.4 Nm | Carries the camera, ears, LED matrix |
+| Body | `torso` box 0.40 × 0.18 × 0.14 m, 2.0 kg | drawing; emergency stop ("Not") and speaker are decoration |
+| Kopf + Servo-Kopf | `head` body, `neck` hinge (z axis), position servo 0.4 Nm | drawing; carries camera, ears, LED matrix |
 | Kamera-Modul | `eye` camera on top of the snout, 48.8° vertical field of view, tilted 20° down | Pi camera v2 |
-| Servo-Schwanz | `tail` hinge, position servo 0.2 Nm | Wags on `brav` |
-| Bein (×4) | `leg_*` capsule on the passive `hip_*` hinge (Achse_Grundkörper) | Splayed 0.3 rad from vertical, as drawn |
-| MG946R (Servo-Beine 4x) | `servo_*` hinge + position actuator `hip_*`, 1.3 Nm, kp 25 | Drives the leg through the linkage |
-| linkage (+ Achse_linkage) | `crank_*` (0.07 m) and `linkage_*` (0.045 m) bars | Parallelogram: leg angle = servo angle |
-| Zugfeder | `spring_*` tendons, 150 N/m, pull above 0.14 m | Carry part of the weight |
-| Antriebsstütze, Achse_Rad, Motor | `wheel_left` / `wheel_right` on the front legs, r = 0.05 m | Velocity actuators, 0.6 Nm |
-| Rear wheels | frictionless `caster_rear_*` balls, r = 0.02 m | Rear legs are longer so the body stands level |
-| Encoder links/rechts | `encoder_left` / `encoder_right` sensors on the wheel joints | Distance = angle × radius |
-| IMU | `imu_orientation`, `imu_gyro`, `imu_accel` on the `imu` site | Heading reported clockwise |
-| Ultraschallsensor | `sonar` rangefinder on the chest | Shown in the viewer only; the core does not use it yet |
+| Servo-Schwanz | `tail` hinge, position servo 0.2 Nm | drawing |
+| Grundkörper.stl | `plate_*`, one mounting plate per leg, fixed to the torso | CAD; two of the four are mirrored |
+| MG946R | `servo_*` hinge + position actuator `hip_*`, 1.3 Nm, kp 25 | datasheet; shaft position assumed (see below) |
+| Antriebsstütze.stl | `crank_*`, turned by the servo, 107.4 mm between holes | CAD |
+| linkage.stl (+ Achse_linkage) | `linkage_*` on the hip axle (`hip_*` joint), 97.2 mm | CAD |
+| Bein.stl | `leg_*` on the `knee_*` joint, joints at 25 / 69 mm, wheel at 160 mm | CAD |
+| Rad.stl (+ Achse_Rad) | `wheel_left` / `wheel_right` on the front legs, r = 20 mm | CAD; velocity actuators, 0.6 Nm |
+| Rear wheels | Rad drawn, frictionless `caster_rear_*` balls touch the floor | assumption, so the dog can turn |
+| Zugfeder | `spring_*` tendons between linkage and leg, 600 N/m, pull above 20 mm | hooks from CAD; stiffness guessed |
+| Encoder links/rechts | `encoder_left` / `encoder_right` sensors on the wheel joints | distance = angle × radius |
+| IMU | `imu_orientation`, `imu_gyro`, `imu_accel` on the `imu` site | heading reported clockwise |
+| Ultraschallsensor | `sonar` rangefinder on the chest | shown in the viewer only |
+
+Masses of the CAD parts come from their volume at 1250 kg/m³ (3D printed PLA, assumed):
+plate 45 g, drive strut 16 g, linkage 20 g, leg 31 g, wheel 8 g. The whole dog weighs 2.8 kg.
 
 ### The leg mechanism
 
+![Front left leg in auf (left) and platz (right)](images/leg-cad.png){ loading=lazy }
+
+Each leg is a four-bar linkage, built like the CAD test setup:
+
 ```
-   body ──●── hip axle (passive)            ● = hinge
-          │╲
-          │ ╲  servo shaft (MG946R) ●──crank──●
-     leg  │  ╲                       linkage  │
-          │   ●───────────────────────────────┘   pinned to the leg (equality "connect")
-          │
-       wheel / caster
+  plate (fixed to the torso)
+   ● hip axle ─── linkage 97.2 ───● knee
+   │                              │ leg 44 mm between joints
+   ● servo ──── drive strut 107.4 ─●
+                                   │
+                                   │ leg continues 91 mm
+                                   ◎ wheel (Rad, r 20 mm)
 ```
 
-Each leg is a closed loop: the servo turns the crank, the linkage bar passes the motion on to
-the leg. Crank and leg are the same length up to the attachment point, so the four bars form a
-parallelogram and **the servo angle equals the leg angle**. A different crank length would give
-the servo leverage. That is the first thing to change once the real CAD dimensions are in.
+The two ground pivots sit 42.6 mm apart and the leg's two joints 44 mm apart, so the
+linkage is nearly a parallelogram: **the leg stays upright while the servo raises or lowers
+the body.** The drive strut is 10 mm longer than the linkage, so the leg tilts a few degrees
+over the travel.
+
+`apps/sim-host/scripts/build_legs.py` builds the legs from the hole positions. It closes the
+four-bar, turns each plate so the leg points straight down in `auf`, stacks the parts
+sideways (plate, bars, leg, wheel), and writes the block between `legs:begin` and `legs:end`
+in `dog.xml`. After a CAD change, update the hole positions at the top of the script and run:
+
+```bash
+uv run python apps/sim-host/scripts/build_legs.py
+```
+
+Assumptions in the script, to confirm with the hardware team:
+
+- **Servo shaft** at (−64, 24.85) mm on the plate: 10 mm from the centre of the servo's
+  mounting holes. The other end of the servo (24.85 → 44.85) would make a very different
+  linkage.
+- **Pairing**: hip axle → linkage → upper leg joint, servo → drive strut → lower leg joint.
+- **Spring hooks**: the small offset holes in the linkage (−53, 4) and the leg (0, 4).
+- **`auf`** has the crank 40° below horizontal (`AUF_CRANK`), legs nearly stretched.
 
 ## Postures
 
-Servo angles relative to the drawing pose (`auf` = 0); positive swings the foot backwards.
-They live in `pico.py` (`POSTURES`).
+Servo angles relative to `auf`; positive lowers the body. They live in `pico.py` (`POSTURES`).
+The servo range in `dog.xml` is −0.6 to 0.8 rad.
 
-| Posture | Front | Rear | Body height | Servo load (of 1.3 Nm) |
+| Posture | Front | Rear | Torso height | Servo load front / rear (of 1.3 Nm) |
 | --- | --- | --- | --- | --- |
-| `auf` | 0 | 0 | 0.27 m | 0.19 Nm |
-| `sitz` | 0 | +0.7 | rear lowered, nose up | 0.53 Nm |
-| `platz` | −0.6 | +0.6 | 0.19 m | 0.79 Nm |
+| `auf` | 0 | 0 | 0.26 m | 0.35 / 0.19 Nm |
+| `sitz` | 0 | +0.7 | rear lowered, nose up 11° | 0.30 / 0.25 Nm |
+| `platz` | +0.75 | +0.75 | 0.18 m | 0.34 / 0.16 Nm |
+| `vorderbeine_runter` | +0.75 | 0 | nose down 12° | 0.45 Nm front |
 
 ## Findings so far
 
-The model is rough, but these come from the mechanics, not from the numbers:
+These come from the mechanics, not from exact numbers.
 
-1. **Fold the rear legs backwards.** With the rear feet swinging forwards under the body, 1.5 Nm
-   servos could not lift the dog out of `sitz`, and 2.5 Nm servos lifted it so hard it tipped
-   over onto its tail.
-2. **Stronger is not automatically better.** With 2.5 Nm servos, going from `platz` to `auf`
-   flipped the first model nose-down.
-3. **Let the wheels coast while the legs move.** When the legs spread, the wheels have to roll.
-   With the H-bridge braking (speed 0), the servos stall at 1.3 Nm and the dog collapses. The
-   emulated Pico now coasts while the leg servos move and brakes otherwise.
-4. **Tension springs halve the servo load.** Standing without springs: 0.48 Nm per front servo.
-   With 150 N/m springs: 0.19 Nm.
-5. **Turning in place pivots around the driven front axle**, not the body centre. The body
-   swings about 0.2 m sideways during a 90° turn.
-6. **A camera looking straight ahead misses the floor near the dog.** At 0.41 m height it sees
-   the floor only from 1.2 m ahead, so the search would lose the bone long before reaching it.
-   Tilted 20° down, it sees from about 0.3 m. In the eye socket, the snout hid a quarter of the image.
+From the CAD legs (iteration 2):
+
+1. **The springs matter.** Without them each front servo holds 0.61 Nm standing, half its
+   stall torque. A 600 N/m spring between the linkage and leg hooks brings that to 0.35 Nm.
+   The spring stretches when the body goes down, so it helps exactly where gravity pulls.
+   The real Zugfeder's rate and length decide how much it helps.
+2. **A leg can snap through.** If the servo jumps a large angle at once, the four-bar can
+   flip into its crossed pose and stay there. The model has a knee stop at 80° and the
+   emulated Pico ramps the servos; the real leg may want a mechanical stop too.
+3. **Raising is harder than lowering.** Lifting the body above `auf` (−0.6 rad) needs
+   about 0.9 Nm per front servo, 70% of stall. No posture uses it.
+
+From the first, drawing-based model (iteration 1), still true:
+
+4. **Let the wheels coast while the legs move.** When the legs move, the wheels have to roll.
+   With the H-bridge braking, the servos stall. The emulated Pico coasts while the leg
+   servos move and brakes otherwise.
+5. **Turning in place pivots around the driven front axle**, not the body centre.
+6. **A camera looking straight ahead misses the floor near the dog.** Tilted 20° down, it
+   sees the floor from about 0.3 m. In the eye socket, the snout hid a quarter of the image.
 
 ## Changing the model
 
 - Open `dog.xml` in MuJoCo's own viewer to look at it alone: `uv run python -m mujoco.viewer --mjcf apps/sim-host/src/dog_sim_host/assets/scene.xml`.
 - Every geom is drawn by the browser automatically. New parts need no viewer change.
 - Wheel radius, track width and wheelbase are read from the model by the Pico emulator.
-- Once STL files of the parts are in the repo, they can replace the simple shapes as MuJoCo meshes.
+- Legs: edit `scripts/build_legs.py`, not the generated block in `dog.xml`.
+- A new CAD part: add its STL under `assets/meshes/STL`, a `<mesh>` in `dog.xml` (scale 0.001,
+  the files are in millimetres) and a geom with `class="part"`. The viewer draws it without changes.

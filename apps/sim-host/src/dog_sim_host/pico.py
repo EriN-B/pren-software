@@ -4,19 +4,23 @@ The real Pico receives one JSON object per line from the Pi 4 (see ``JsonUartPro
 in ``dog_core.uart_protocol``) and drives the servos and the H-bridge. This module does
 the same against the simulated robot, so the core cannot tell the difference.
 
-Commands handled (``{"command": ...}``):
+It speaks two protocols at once, because the core and the team's interface definition
+(2026-11-13, raw data up, commands down) do not agree yet:
 
 | command        | parameters                      | effect                                   |
 | -------------- | ------------------------------- | ---------------------------------------- |
-| `drive`        | `speed` m/s, `angle` degrees    | drive; expires after `DRIVE_TIMEOUT`     |
-| `rotate`       | `degrees`, clockwise positive   | turn in place using the IMU heading      |
+| `wheels`       | `left_mm_s`, `right_mm_s`       | new: wheel target speeds; expire after `DRIVE_TIMEOUT` |
+| `pose`         | `pose`: a key of `POSE_CODES`   | new: move the leg servos to that pose    |
+| `drive`        | `speed` m/s, `angle` degrees    | old: drive; expires after `DRIVE_TIMEOUT` |
+| `rotate`       | `degrees`, clockwise positive   | old: turn in place using the IMU heading |
 | `stop`         |                                 | stop driving and turning                 |
-| `auf` / `sitz` / `platz` |                       | move the leg servos to that posture      |
+| `auf` / `sitz` / `platz` / `vorderbeine_runter` | | move the leg servos to that posture |
 | `brav`         |                                 | wag the tail                             |
 | `signal_found` |                                 | shake the head                           |
 
-Sent back every 50 ms: ``{"type": "odometry", "timestamp", "left_distance_m",
-"right_distance_m", "heading_deg"}``.
+Sent back: `measurements` (new, raw sensor values, see `measurements`) every 20 ms and
+``{"type": "odometry", "timestamp", "left_distance_m", "right_distance_m", "heading_deg"}``
+(old) every 50 ms.
 """
 
 import logging
@@ -27,14 +31,25 @@ from dog_sim_host.world import World
 
 log = logging.getLogger(__name__)
 
-#: Leg servo targets in radians per posture, relative to the drawing pose (auf = 0).
-#: Positive swings the foot backwards. Sitz and platz spread the legs further out;
-#: the angles keep the servos below about 0.8 of their 1.3 Nm (see robot-model docs).
+#: Leg servo targets in radians per posture. 0 = auf, legs nearly stretched;
+#: positive lowers the body. Sitz lowers the rear, platz lowers everything,
+#: vorderbeine_runter lowers the front for the bone approach (interface definition
+#: 2026-11-13, pose VORDERBEINE_RUNTER).
+#: Within the servo range in dog.xml (-0.6 to 0.8); see robot-model docs for the loads.
 POSTURES = {
     "auf": {"front": 0.0, "rear": 0.0},
     "sitz": {"front": 0.0, "rear": 0.7},
-    "platz": {"front": -0.6, "rear": 0.6},
+    "platz": {"front": 0.75, "rear": 0.75},
+    "vorderbeine_runter": {"front": 0.75, "rear": 0.0},
 }
+#: Pose codes of the interface definition and the posture each one moves to.
+POSE_CODES = {
+    "STEHEN": "auf",
+    "SITZ": "sitz",
+    "PLATZ": "platz",
+    "VORDERBEINE_RUNTER": "vorderbeine_runter",
+}
+SONAR_RANGE = 4.0  # m; HC-SR04 class sensor, beyond it the Pico reports no distance
 SERVO_SPEED = 4.0  # rad/s; hobby servos move about 60 degrees in 0.15-0.25 s
 DRIVE_TIMEOUT = 0.5  # s; the dog stops if the core stops sending drive commands
 TURN_RATE = math.radians(90)  # rad/s for rotate
@@ -78,27 +93,38 @@ class PicoFirmware:
         self.log: deque[dict] = deque(maxlen=12)
         self._servo = {name: 0.0 for name in ("front", "rear")}
         self._drive: tuple[float, float, float] | None = None  # speed, angle, time
+        self._wheel_targets: tuple[float, float, float] | None = (
+            None  # left, right m/s, time
+        )
         self._turn_target: float | None = None  # clockwise heading in degrees
         self._wag_until = 0.0
         self._shake_until = 0.0
         self._time_offset = 0.0  # keeps odometry timestamps increasing across resets
 
     def handle(self, message: dict) -> None:
-        """Act on one decoded UART message from the core (or the viewer)."""
+        """Act on one decoded UART message from the core (or the viewer).
+
+        Raises:
+            KeyError, ValueError, TypeError: A field is missing or has the wrong type.
+        """
         self.log.append(message)
         command = message.get("command")
         now = self.world.time
-        if command == "drive":
-            self._turn_target = None
+        if command in ("wheels", "drive", "rotate", "stop"):
+            self._drive = self._wheel_targets = self._turn_target = None
+        if command == "wheels":
+            left, right = float(message["left_mm_s"]), float(message["right_mm_s"])
+            self._wheel_targets = (left / 1000, right / 1000, now)
+        elif command == "pose":
+            self.posture = POSE_CODES[message["pose"]]
+        elif command == "drive":
             self._drive = (float(message["speed"]), float(message["angle"]), now)
         elif command == "rotate":
-            self._drive = None
             self._turn_target = (
                 self.world.heading_cw() + float(message["degrees"])
             ) % 360
         elif command == "stop":
-            self._drive = None
-            self._turn_target = None
+            pass
         elif command in POSTURES:
             self.posture = command
         elif command == "brav":
@@ -157,6 +183,41 @@ class PicoFirmware:
             "heading_deg": self.world.heading_cw(),
         }
 
+    def measurements(self) -> dict:
+        """The raw sensor packet of the interface definition; the Pico interprets nothing.
+
+        Axes are the torso's: x forwards, y left, z up. Servo positions are the last
+        commanded angles, because hobby servos do not report theirs.
+        """
+        world, data = self.world, self.world.data
+        distance = float(world.sensor("sonar")[0])  # -1 when the ray hits nothing
+        packet = {
+            "type": "measurements",
+            "timestamp": round(self._time_offset + world.time, 4),
+            "distance_mm": round(distance * 1000)
+            if 0 <= distance <= SONAR_RANGE
+            else None,
+            "accel_m_s2": [round(float(v), 2) for v in world.sensor("imu_accel")],
+            "gyro_deg_s": [round(math.degrees(v), 1) for v in world.sensor("imu_gyro")],
+        }
+        for side in ("left", "right"):
+            packet[f"encoder_{side}"] = {
+                "rpm": round(
+                    float(data.joint(f"wheel_{side}").qvel[0]) * 60 / math.tau, 1
+                ),
+                "angle_deg": round(math.degrees(world.sensor(f"encoder_{side}")[0]), 1),
+            }
+        packet["servos_deg"] = {
+            name: round(math.degrees(data.actuator(name).ctrl[0]), 1)
+            for name in (
+                *(j.replace("servo_", "hip_") for j in self._servo_joints),
+                "neck",
+                "tail",
+            )
+        }
+        packet["emergency_stop"] = self.emergency_stop
+        return packet
+
     def reset_with_world(self) -> None:
         """Reset the world and this firmware together.
 
@@ -193,6 +254,11 @@ class PicoFirmware:
             # Slow down over the last degrees so the turn does not overshoot.
             rate = min(TURN_RATE, math.radians(abs(error)) * 3)
             return 0.0, math.copysign(rate, error)
+        if self._wheel_targets is not None:
+            left, right, since = self._wheel_targets
+            if now - since <= DRIVE_TIMEOUT:
+                return (left + right) / 2, (left - right) / self.track_width
+            self._wheel_targets = None
         if self._drive is not None:
             speed, angle, since = self._drive
             if now - since <= DRIVE_TIMEOUT:

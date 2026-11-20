@@ -52,11 +52,31 @@ The states read hardware through objects that `states/startup.py` creates.
 
 The viewer shows the core's current state in the top bar, or the error if it failed to start.
 
+## First full run (2026-11-20)
+
+The complete dev-core core (commit `86b36b8`) ran inside the simulator in its own Python
+environment, with its ML dependencies installed next to the simulator:
+
+```bash
+uv venv core-venv --python 3.12
+uv pip install --python core-venv/bin/python <dev-core>/packages/dog-core <dev-core>/packages/dog-perception <dev-core>/packages/dog-recorder -e packages/dog-protocol mujoco websockets
+uv pip install --python core-venv/bin/python --no-deps -e packages/dog-behavior -e apps/sim-host
+core-venv/bin/dog-sim --core
+```
+
+Startup, `standing_idle`, voice commands, `platz`, `auf` and the 180° turn of `such` all worked.
+Then the search saw the bone and drove towards it, but **the bone left the bottom of the
+image without counting as close**: it stayed 0.1 of the image width off centre, just outside
+the core's 0.08 tolerance, and the steering (`error * 30` degrees) did not centre it in time.
+After that the core sends `stop` forever: the state only times out while it has never seen the
+bone. Both are core behaviour to look at (steering gain, a timeout after losing the bone);
+the simulator's assumption about `angle` (bicycle steering) also plays in.
+
 ## Not covered yet
 
 - **Real images for the real models**: YOLO and MediaPipe run on camera frames, but the frames are
   black. The next step: render the dog's camera view and send it to `SimCamera`.
-- **Running the full core here**: its ML dependencies (mediapipe, ultralytics, vosk) are not installed
-  on this branch, so only the UART path was run against the real core code.
+- **The full core on this branch**: it runs only in a separate environment (above) until the
+  branches are merged.
 - **Import rules**: dev-core's `dog_core` imports OpenCV and the perception packages, which the
   rules on `develop` forbid. That needs sorting out when the branches are merged.

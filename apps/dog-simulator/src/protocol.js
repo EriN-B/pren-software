@@ -12,9 +12,17 @@
  * @typedef {object} Geom
  * @property {string} name
  * @property {string} body Name of the body the geom belongs to, e.g. "dog" or "bone".
- * @property {"plane"|"sphere"|"capsule"|"ellipsoid"|"cylinder"|"box"} type
+ * @property {"plane"|"sphere"|"capsule"|"ellipsoid"|"cylinder"|"box"|"mesh"} type
  * @property {number[]} size
  * @property {number[]} rgba Colour, each channel 0..1.
+ * @property {string} [mesh] Key into `SceneMessage.meshes`, only for type "mesh".
+ */
+
+/**
+ * Triangles of a CAD part in metres, in the frame of the geoms that use it.
+ * @typedef {object} Mesh
+ * @property {number[]} vertices x, y, z, x, y, z, ...
+ * @property {number[]} faces Three vertex indices per triangle.
  */
 
 /**
@@ -22,6 +30,7 @@
  * @typedef {object} SceneMessage
  * @property {"scene"} type
  * @property {Geom[]} geoms
+ * @property {Record<string, Mesh>} meshes CAD parts, shared by every geom that uses them.
  */
 
 /**

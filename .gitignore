@@ -8,3 +8,6 @@ models/*
 node_modules/
 dist/
 site/
+
+# macOS
+.DS_Store
