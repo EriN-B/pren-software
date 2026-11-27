@@ -8,6 +8,8 @@ if TYPE_CHECKING:
 
 TURN_WAIT_SECONDS = 3.0
 CLOSE_FRAME_FRACTION = 0.75
+# Keep the last drive command through brief detection dropouts.
+LOST_BONE_STOP_FRAMES = 6
 MISSING_CONFIRMATION_FRAMES = 3
 
 
@@ -52,11 +54,18 @@ def enter(machine: PrenMachine) -> None:
 
             if not boxes:
                 if bone_seen:
-                    machine.shared.uart.stop()
                     missing_frames += 1
-                    if missing_frames == 1:
+                    stop_after = (
+                        MISSING_CONFIRMATION_FRAMES
+                        if bone_close
+                        else LOST_BONE_STOP_FRAMES
+                    )
+                    if missing_frames >= stop_after:
+                        machine.shared.uart.stop()
+                    if missing_frames == stop_after:
                         machine.shared.logger.info(
-                            "Bone no longer visible; stopping (previously close: %s)",
+                            "Bone missing for %d frames; stopping (previously close: %s)",
+                            missing_frames,
                             bone_close,
                         )
                     if bone_close and missing_frames >= MISSING_CONFIRMATION_FRAMES:

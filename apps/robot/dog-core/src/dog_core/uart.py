@@ -297,6 +297,11 @@ class Uart:
         """Request that the Pico stop both driving and rotation."""
         self._write(self._protocol.encode_stop())
 
+    def head_tilt(self, deg: float) -> None:
+        """Request a head tilt in degrees; the Pico defines angle limits."""
+        self._validate_number("deg", deg)
+        self._write(self._protocol.encode_head_tilt(deg))
+
     def sitz(self) -> None:
         """Queue the sit command without waiting for completion."""
         self._write(self._protocol.encode_sitz())

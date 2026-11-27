@@ -1,4 +1,4 @@
-"""Exercise person-to-shoe approach with recorded detections and a fake clock."""
+"""Exercise head-down shoe approach with recorded detections and a fake clock."""
 
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -30,9 +30,13 @@ def detections(person=None, shoes=()):
 @pytest.fixture
 def clock(monkeypatch):
     now = [0.0]
-    monkeypatch.setattr(perform_hier.time, "monotonic", lambda: now[0])
     monkeypatch.setattr(
-        perform_hier.time, "sleep", lambda delay: now.__setitem__(0, now[0] + delay)
+        perform_hier,
+        "time",
+        SimpleNamespace(
+            monotonic=lambda: now[0],
+            sleep=lambda delay: now.__setitem__(0, now[0] + delay),
+        ),
     )
     return now
 
@@ -61,6 +65,7 @@ def machine_for(*frames, repeat_empty=False):
         ("drive", speed, angle)
     )
     uart.stop.side_effect = lambda: commands.append(("stop",))
+    uart.head_tilt.side_effect = lambda deg: commands.append(("head_tilt", deg))
     machine = SimpleNamespace(
         shared=SimpleNamespace(
             camera=camera, object_model=model, uart=uart, logger=Mock()
@@ -70,107 +75,113 @@ def machine_for(*frames, repeat_empty=False):
     return machine, commands
 
 
-def test_approach_person_then_shoes_then_stop_before_idle(clock):
+def test_lowers_head_and_creeps_until_first_shoe_then_returns_to_command_wait(clock):
     machine, commands = machine_for(
+        detections(),
         detections(PERSON),
-        detections(CROPPED, [SHOE]),
-        detections(shoes=[CLOSE_SHOE]),
-        detections(shoes=[CLOSE_SHOE]),
-        detections(shoes=[CLOSE_SHOE]),
+        detections(shoes=[SHOE]),
+        detections(),
     )
     perform_hier.enter(machine)
-    assert commands[0] == ("stop",)
-    assert commands[1][0] == "drive" and commands[1][1] > 0 and commands[1][2] < 0
-    assert commands[2] == pytest.approx(("drive", 0.03, -6))
-    assert commands[3:] == [("stop",)] * 4 + [("idle",)]
+    assert commands == [
+        ("stop",),
+        ("head_tilt", 30.0),
+        ("drive", 0.03, 0.0),
+        ("drive", 0.03, 0.0),
+        ("stop",),
+        ("idle",),
+    ]
+    assert machine.shared.camera.read.call_count == 3
+    machine.go_to_standing_idle.assert_called_once_with()
     machine.shared.uart.rotate.assert_not_called()
     machine.shared.logger.exception.assert_not_called()
 
 
-@pytest.mark.parametrize(
-    "person,sign", [([20, 10, 80, 90], -1), ([120, 10, 180, 90], 1)]
-)
-def test_steers_toward_person_while_driving_forward(clock, person, sign):
-    machine, commands = machine_for(detections(person))
+@pytest.mark.parametrize("person", [None, PERSON, CROPPED])
+@pytest.mark.parametrize("shoe", [SHOE, CLOSE_SHOE, [170, 80, 175, 90]])
+def test_any_shoe_stops_without_needing_person_size_or_confirmation(
+    clock, person, shoe
+):
+    machine, commands = machine_for(detections(person, [shoe]), detections())
     perform_hier.enter(machine)
-    speed, angle = machine.shared.uart.drive.call_args.args
-    assert speed > 0
-    assert angle * sign > 0
+    assert commands == [("stop",), ("head_tilt", 30.0), ("stop",), ("idle",)]
+    assert machine.shared.camera.read.call_count == 1
+    machine.shared.uart.drive.assert_not_called()
+    machine.shared.logger.exception.assert_not_called()
+
+
+@pytest.mark.parametrize("person", [PERSON, CROPPED])
+def test_person_alone_does_not_stop_or_change_straight_creep(clock, person):
+    machine, commands = machine_for(detections(person), detections(shoes=[SHOE]))
+    perform_hier.enter(machine)
+    machine.shared.uart.drive.assert_called_once_with(0.03, 0.0)
     assert commands[-2:] == [("stop",), ("idle",)]
 
 
-def test_no_person_waits_stopped_and_times_out(clock):
-    machine, commands = machine_for(repeat_empty=True)
-    perform_hier.enter(machine)
-    machine.shared.uart.drive.assert_not_called()
-    machine.shared.uart.rotate.assert_not_called()
-    assert clock[0] >= perform_hier.TARGET_LOST_TIMEOUT
-    assert commands[-2:] == [("stop",), ("idle",)]
-
-
-def test_cropped_person_without_shoes_does_not_drive_blindly(clock):
-    machine, _ = machine_for(detections(CROPPED), repeat_empty=True)
-    perform_hier.enter(machine)
-    machine.shared.uart.drive.assert_not_called()
-
-
-def test_unrelated_shoes_are_not_followed(clock):
-    unrelated = [170, 80, 198, 98]
-    machine, _ = machine_for(detections(CROPPED, [unrelated]), repeat_empty=True)
-    perform_hier.enter(machine)
-    machine.shared.uart.drive.assert_not_called()
-
-
-def test_shoes_must_be_near_persons_lower_body(clock):
-    shoe_above_feet = [70, 20, 90, 35]
-    machine, _ = machine_for(detections(CROPPED, [shoe_above_feet]), repeat_empty=True)
-    perform_hier.enter(machine)
-    machine.shared.uart.drive.assert_not_called()
-
-
-def test_person_target_does_not_jump_to_a_distant_detection(clock):
-    distant = [155, 10, 195, 90]
-    machine, _ = machine_for(detections(PERSON), detections(distant), repeat_empty=True)
-    perform_hier.enter(machine)
-    machine.shared.uart.drive.assert_called_once()
-
-
-def test_shoes_alone_do_not_establish_an_unseen_person(clock):
-    machine, _ = machine_for(detections(shoes=[CLOSE_SHOE]), repeat_empty=True)
-    perform_hier.enter(machine)
-    machine.shared.uart.drive.assert_not_called()
-
-
-def test_losing_shoes_stops_immediately_and_resets_close_confirmation(clock):
+def test_missing_boxes_keep_creeping(clock):
     machine, commands = machine_for(
-        detections(CROPPED, [CLOSE_SHOE]),
-        detections(shoes=[CLOSE_SHOE]),
-        detections(),
-        detections(shoes=[CLOSE_SHOE]),
-        detections(shoes=[CLOSE_SHOE]),
-        detections(shoes=[CLOSE_SHOE]),
+        SimpleNamespace(boxes=None), detections(shoes=[SHOE])
     )
     perform_hier.enter(machine)
-    assert machine.shared.camera.read.call_count == 6
+    machine.shared.uart.drive.assert_called_once_with(0.03, 0.0)
+    assert commands[-2:] == [("stop",), ("idle",)]
+    machine.shared.logger.exception.assert_not_called()
+
+
+def test_no_shoes_times_out_and_stops_before_returning_to_command_wait(clock):
+    machine, commands = machine_for(repeat_empty=True)
+    perform_hier.enter(machine)
+    assert machine.shared.uart.drive.call_count > 0
+    assert all(
+        call.args == (0.03, 0.0) for call in machine.shared.uart.drive.call_args_list
+    )
+    assert perform_hier.TARGET_LOST_TIMEOUT <= clock[0] < 8.11
+    assert commands[-2:] == [("stop",), ("idle",)]
+    machine.shared.logger.exception.assert_not_called()
+
+
+def test_slow_inference_counts_towards_timeout_without_driving(clock):
+    machine, commands = machine_for(detections())
+
+    def detect(image):
+        clock[0] += 9.0
+        return detections()
+
+    machine.shared.object_model.get_people_and_shoes.side_effect = detect
+    perform_hier.enter(machine)
     machine.shared.uart.drive.assert_not_called()
     assert commands[-2:] == [("stop",), ("idle",)]
 
 
-def test_steers_between_shoes_but_size_threshold_uses_one_shoe(clock):
-    left, right = [50, 80, 70, 95], [130, 80, 150, 95]
-    machine, _ = machine_for(detections(CROPPED, [left, right]))
+def test_camera_failure_stops_and_returns_to_command_wait(clock):
+    machine, commands = machine_for(detections())
     perform_hier.enter(machine)
-    machine.shared.uart.drive.assert_called_once_with(0.03, 0)
+    machine.shared.uart.drive.assert_called_once_with(0.03, 0.0)
+    machine.shared.logger.error.assert_called_once()
+    assert commands[-2:] == [("stop",), ("idle",)]
 
 
-def test_can_handoff_to_associated_shoes_when_person_detection_disappears(clock):
-    machine, _ = machine_for(detections(PERSON), detections(shoes=[SHOE]))
+def test_head_is_lowered_before_camera_is_read(clock):
+    machine, _ = machine_for(detections(shoes=[SHOE]))
+    machine.shared.uart.head_tilt.side_effect = lambda deg: (
+        machine.shared.camera.read.assert_not_called()
+    )
     perform_hier.enter(machine)
-    assert machine.shared.uart.drive.call_count == 2
-    assert machine.shared.uart.drive.call_args.args[0] == 0.03
+    machine.shared.uart.head_tilt.assert_called_once_with(30.0)
+    assert machine.shared.camera.read.call_count == 1
 
 
-def test_model_failure_stops_and_returns_idle(clock):
+def test_head_command_failure_stops_without_driving(clock):
+    machine, commands = machine_for(detections())
+    machine.shared.uart.head_tilt.side_effect = RuntimeError("head failed")
+    perform_hier.enter(machine)
+    machine.shared.uart.drive.assert_not_called()
+    machine.shared.camera.read.assert_not_called()
+    machine.shared.logger.exception.assert_called_once()
+    assert commands[-2:] == [("stop",), ("idle",)]
+
+
+def test_model_failure_stops_and_returns_to_command_wait(clock):
     machine, commands = machine_for(detections(PERSON))
     machine.shared.object_model.get_people_and_shoes.side_effect = RuntimeError(
         "model failed"

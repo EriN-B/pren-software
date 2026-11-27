@@ -211,6 +211,9 @@ def test_read_uses_one_deadline_for_all_fragments(serial_pair):
         ("drive", (-2.5,), {"command": "drive", "speed": -2.5, "angle": 0}),
         ("drive", (0,), {"command": "drive", "speed": 0, "angle": 0}),
         ("stop", (), {"command": "stop"}),
+        ("head_tilt", (30,), {"command": "head_tilt", "deg": 30}),
+        ("head_tilt", (0,), {"command": "head_tilt", "deg": 0}),
+        ("head_tilt", (-15.5,), {"command": "head_tilt", "deg": -15.5}),
         ("sitz", (), {"command": "sitz"}),
         ("platz", (), {"command": "platz"}),
         ("auf", (), {"command": "auf"}),
@@ -238,6 +241,11 @@ def test_movement_commands_are_newline_delimited_json(
         ("rotate", (float("inf"),)),
         ("rotate", ("180",)),
         ("rotate", (True,)),
+        ("head_tilt", (float("nan"),)),
+        ("head_tilt", (float("inf"),)),
+        ("head_tilt", (float("-inf"),)),
+        ("head_tilt", ("30",)),
+        ("head_tilt", (True,)),
         ("drive", (float("nan"),)),
         ("drive", (float("inf"),)),
         ("drive", (float("-inf"),)),
@@ -276,6 +284,7 @@ def test_multiple_commands_preserve_message_boundaries(serial_pair):
         ("rotate", (180,)),
         ("drive", (0.5,)),
         ("stop", ()),
+        ("head_tilt", (30,)),
         ("sitz", ()),
         ("platz", ()),
         ("auf", ()),
@@ -311,6 +320,9 @@ def test_protocol_can_be_replaced_with_binary_without_changing_movement_calls(
         def encode_stop(self) -> bytes:
             return b"\x03"
 
+        def encode_head_tilt(self, deg: float) -> bytes:
+            return struct.pack("<Bf", 0x09, deg)
+
         def encode_sitz(self) -> bytes:
             return b"\x04"
 
@@ -336,6 +348,7 @@ def test_protocol_can_be_replaced_with_binary_without_changing_movement_calls(
         uart.auf()
         uart.brav()
         uart.signal_found()
+        uart.head_tilt(30)
         assert select.select([master], [], [], 1)[0]
         # No JSON or newline may be added by the UART transport.
         assert os.read(master, 1024) == (
@@ -344,7 +357,8 @@ def test_protocol_can_be_replaced_with_binary_without_changing_movement_calls(
             + b"\x02"
             + struct.pack("<ff", 2.5, -15)
             + b"\x03"
-            + b"\x04\x05\x06\x07\x08"
+            + b"\x04\x05\x06\x07\x08\x09"
+            + struct.pack("<f", 30)
         )
 
 

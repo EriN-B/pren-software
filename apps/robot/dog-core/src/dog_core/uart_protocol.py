@@ -23,6 +23,10 @@ class UartProtocol(Protocol):
         """Encode a request to stop driving and rotation."""
         ...
 
+    def encode_head_tilt(self, deg: float) -> bytes:
+        """Encode the requested head tilt in degrees."""
+        ...
+
     def encode_sitz(self) -> bytes:
         """Encode the sit command."""
         ...
@@ -71,6 +75,9 @@ class JsonUartProtocol:
 
     def encode_stop(self) -> bytes:
         return self._encode("stop")
+
+    def encode_head_tilt(self, deg: float) -> bytes:
+        return self._encode("head_tilt", deg=deg)
 
     def encode_sitz(self) -> bytes:
         return self._encode("sitz")
