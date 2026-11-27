@@ -24,4 +24,4 @@ and lets the team develop and test the software without hardware; a first versio
 - Two languages in one repo: Python in the uv workspace, the web app beside it with its own tooling and CI
   job once it exists.
 - Simulator technology, the connection to the sim host and the data format are still to be done.
-- The pygame prototype stays an untracked reference for behaviour ideas (Cockpit, Test bench, Replay).
+- The pygame prototype was an untracked reference for behaviour ideas (Cockpit, Test bench, Replay); removed on 2026-11-27 once the MuJoCo simulator replaced it.

@@ -60,7 +60,6 @@ One brain, two bodies. The simulator never contains the brain; the same Python d
 
 - Concepts: `docs/concepts/simulator.md`, `docs/concepts/architecture.md`, with diagrams in `docs/concepts/images/` (field, blocks, overview, jobs, loop).
 - Decision: `docs/adr/0001-web-3d-simulator.md`.
-- Untracked behaviour reference: `apps/sim-host/prototype/pygame_sim.py` (2D Cockpit, Test bench, Replay front-ends). Ideas only, not a visual reference.
 - No real-run recordings, measured detection rates, or robot hardware data yet; do not fabricate them.
 
 ## Product Principles
