@@ -27,3 +27,6 @@ apps/sim-host/src/dog_sim_host/assets/meshes/STL/Knochen.stl
 .cursor/
 .idea/
 .impeccable/
+
+# Rendered training images (apps/sim-host/scripts/make_dataset.py)
+datasets/

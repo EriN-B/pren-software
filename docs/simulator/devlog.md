@@ -2,6 +2,14 @@
 
 One entry per iteration: what changed, what we learned, what is next. Newest first.
 
+## 2026-11-27 · Training data for the bone detector
+
+- `scripts/make_dataset.py` renders labelled YOLO images of the bone: random floor, light,
+  bone pose and camera pose, labels from the segmentation render, 15 % without bone.
+  See [Training data](training-data.md).
+- Next: real videos of the bone on the field as a test set, then train and compare
+  real only, sim only, and sim + real.
+
 ## 2026-11-20 · The viewer as a working tool
 
 - New layout, light theme as PRODUCT.md asks, in a race-timing look: a run clock started by
