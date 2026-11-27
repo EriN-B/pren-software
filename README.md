@@ -49,13 +49,62 @@ uv sync --all-packages --extra vosk   # also: mediapipe, yolo
 
 ## Simulator
 
+The simulator runs in two terminals: the **sim host** (physics, emulated Pico, optionally the
+real dog core) and the **viewer** in your browser. Install once:
+
 ```sh
-uv run dog-sim                                   # physics + emulated Pico + viewer server
-npm --prefix apps/dog-simulator install          # once
-npm --prefix apps/dog-simulator run dev          # viewer on http://localhost:5173
+uv sync
+npm --prefix apps/dog-simulator install
 ```
 
-See [docs/simulator/](docs/simulator/index.md).
+### 1. Start the sim host, pick one
+
+| You want | Command |
+| --- | --- |
+| Just the robot, you drive it yourself | `uv run dog-sim` |
+| The real dog core, with webcam and microphone | `.venv-core/bin/dog-sim --core` |
+| The core, but use the Mac's own camera (an iPhone nearby takes camera 0) | `.venv-core/bin/dog-sim --core --webcam 1` |
+| The core without any webcam (no gestures, voice still works) | `.venv-core/bin/dog-sim --core --webcam -1` |
+
+The core needs its own environment. Build it once, and again whenever `dev-core` changes:
+
+```sh
+apps/sim-host/scripts/core-env.sh            # core from origin/dev-core
+apps/sim-host/scripts/core-env.sh my-branch  # or from another branch
+```
+
+### 2. Start the viewer
+
+```sh
+npm --prefix apps/dog-simulator run dev
+```
+
+Open <http://localhost:5173>.
+
+### 3. Use it
+
+- **Without the core:** hold <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to drive, use the
+  posture and Pico buttons, place the bone and the person.
+- **With the core:** command the dog like the real one. Say "such" to your laptop's microphone,
+  or show a gesture to the webcam. The dog camera shows what the core sees, with its detections;
+  the log dock shows every log line of the core, the sim host and the UART.
+- **Reset everything** restarts the sim host and the core. The viewer reconnects after about 5 s.
+
+On first start macOS asks for **camera and microphone permission** for your terminal or IDE.
+Allow both, then restart the sim host.
+
+### Troubleshooting
+
+| Problem | Fix |
+| --- | --- |
+| The viewer says "Sim host offline, retrying" | The sim host is not running, or runs on another port: add `?ws=ws://localhost:PORT` to the viewer URL. |
+| The webcam shows your phone | Start with `--webcam 1`. The log names the camera it opened. |
+| `No webcam for gestures` in the log | Grant camera permission to your terminal or IDE, then restart. |
+| The core is stuck in a state | Click **Reset everything**. |
+| `.venv-core/bin/dog-sim` not found | Run `apps/sim-host/scripts/core-env.sh` first. |
+
+More: [docs/simulator/](docs/simulator/index.md), with the core setup in
+[core-integration.md](docs/simulator/core-integration.md).
 
 ## Commands
 
