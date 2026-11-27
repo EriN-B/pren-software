@@ -1,0 +1,112 @@
+@startuml state_machine_uml
+left to right direction
+skinparam defaultFontName Inter
+skinparam defaultFontSize 12
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam ArrowColor #334155
+skinparam ArrowThickness 1.2
+skinparam nodesep 30
+skinparam ranksep 55
+skinparam Padding 12
+skinparam TitleFontSize 24
+skinparam CaptionFontSize 14
+skinparam defaultTextAlignment left
+skinparam state {
+  BackgroundColor #F8FAFC
+  BorderColor #334155
+  FontColor #172B45
+  FontSize 14
+  AttributeFontSize 11
+}
+title Zustandsdiagramm
+caption Alle Übergänge nur im Happy Path dargestellt
+
+state "<size:14><b>Initialisierung</b></size>\n<size:10><color:#64748B>startup</color></size>" as startup
+startup : entry / on_enter_startup()
+startup : exit / on_exit_startup()
+
+state "<size:14><b>Bereit · Stehen</b></size>\n<size:10><color:#64748B>standing_idle</color></size>" as standing_idle
+standing_idle : entry / on_enter_standing_idle()
+standing_idle : exit / on_exit_standing_idle()
+
+state "<size:14><b>Knochen suchen</b></size>\n<size:10><color:#64748B>searching</color></size>" as searching
+searching : entry / on_enter_searching()
+searching : exit / on_exit_searching()
+
+state "<size:14><b>Fund signalisieren</b></size>\n<size:10><color:#64748B>found</color></size>" as found
+found : entry / on_enter_found()
+found : exit / on_exit_found()
+
+state "<size:14><b>Zum Start zurückkehren</b></size>\n<size:10><color:#64748B>returning</color></size>" as returning
+returning : entry / on_enter_returning()
+returning : exit / on_exit_returning()
+
+state "<size:14><b>Herankommen · Hier</b></size>\n<size:10><color:#64748B>perform_hier</color></size>" as perform_hier
+perform_hier : entry / on_enter_perform_hier()
+perform_hier : exit / on_exit_perform_hier()
+
+state "<size:14><b>Liegen</b></size>\n<size:10><color:#64748B>platz</color></size>" as platz
+platz : entry / on_enter_platz()
+platz : exit / on_exit_platz()
+
+state "<size:14><b>Aufstehen</b></size>\n<size:10><color:#64748B>perform_auf</color></size>" as perform_auf
+perform_auf : entry / on_enter_perform_auf()
+perform_auf : exit / on_exit_perform_auf()
+
+state "<size:14><b>Sitzen</b></size>\n<size:10><color:#64748B>sitz</color></size>" as sitz
+sitz : entry / on_enter_sitz()
+sitz : exit / on_exit_sitz()
+
+state "<size:14><b>Brav ausführen</b></size>\n<size:10><color:#64748B>perform_brav</color></size>" as perform_brav
+perform_brav : entry / on_enter_perform_brav()
+perform_brav : exit / on_exit_perform_brav()
+
+state "<size:14><b>Aufstehen vor der Suche</b></size>\n<size:10><color:#64748B>auf_before_such</color></size>" as auf_before_such
+auf_before_such : entry / on_enter_auf_before_such()
+auf_before_such : exit / on_exit_auf_before_such()
+
+state "<size:14><b>Aufstehen vor Brav</b></size>\n<size:10><color:#64748B>auf_before_brav</color></size>" as auf_before_brav
+auf_before_brav : entry / on_enter_auf_before_brav()
+auf_before_brav : exit / on_exit_auf_before_brav()
+
+state "<size:14><b>Aufstehen vor Hier</b></size>\n<size:10><color:#64748B>auf_before_hier</color></size>" as auf_before_hier
+auf_before_hier : entry / on_enter_auf_before_hier()
+auf_before_hier : exit / on_exit_auf_before_hier()
+
+[*] --> startup
+startup --> standing_idle : go_to_standing_idle
+standing_idle --> searching : such
+standing_idle --> perform_hier : hier
+standing_idle --> sitz : sitz
+standing_idle --> platz : platz
+standing_idle --> perform_brav : brav
+searching --> found : signal
+found --> returning : return_back
+returning --> standing_idle : returned
+perform_hier --> standing_idle : go_to_standing_idle
+platz --> auf_before_such : such
+platz --> auf_before_hier : hier
+platz --> sitz : sitz
+platz --> perform_auf : auf
+platz --> auf_before_brav : brav
+perform_auf --> standing_idle : go_to_standing_idle
+sitz --> auf_before_such : such
+sitz --> auf_before_hier : hier
+sitz --> platz : platz
+sitz --> perform_auf : auf
+sitz --> auf_before_brav : brav
+perform_brav --> standing_idle : go_to_standing_idle
+auf_before_such --> searching : go_to_searching
+auf_before_brav --> perform_brav : go_to_perform_brav
+auf_before_hier --> perform_hier : go_to_perform_hier
+
+legend bottom left
+  entry / Verhalten: beim Eintritt in den Zustand
+  exit / Verhalten: beim Verlassen des Zustands
+  Pfeilbeschriftung: auslösendes Ereignis (Name aus dem Code)
+  Auch intern ausgelöste Ereignisse sind explizite Trigger.
+  Keine zusätzlichen Bedingungen oder Übergangseffekte modelliert.
+  Kein Endzustand: Die Zustandsmaschine läuft im Dauerbetrieb.
+endlegend
+@enduml
