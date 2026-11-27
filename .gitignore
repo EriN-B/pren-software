@@ -15,3 +15,15 @@ site/
 # Real dog core for the simulator (apps/sim-host/scripts/core-env.sh)
 .core/
 .venv-core/
+
+# Native CAD sources from the hardware team; the simulator reads the STL exports
+apps/sim-host/src/dog_sim_host/assets/meshes/*.prt
+apps/sim-host/src/dog_sim_host/assets/meshes/*.sim
+apps/sim-host/src/dog_sim_host/assets/meshes/STL/Knochen.stl
+
+# Personal tool and editor settings
+.claude/
+.codex/
+.cursor/
+.idea/
+.impeccable/
