@@ -15,6 +15,7 @@ import asyncio
 import json
 import logging
 import os
+import random
 import sys
 import time
 from pathlib import Path
@@ -69,6 +70,7 @@ class Simulator:
         self.pico = PicoFirmware(self.world)
         self.uart = PtyLink(link)
         self.core = CoreRunner(link, webcam) if with_core else None
+        self._rng = random.Random()
         # The core's camera image: the dog's view, rendered like the viewer's inset.
         self._renderer = (
             mujoco.Renderer(self.world.model, HEIGHT, WIDTH) if with_core else None
@@ -170,6 +172,23 @@ class Simulator:
             x, y = float(message["x"]), float(message["y"])
             yaw = float(message.get("yaw", 0))  # optional: older viewers do not send it
             self.world.place(message["object"], x, y, yaw)
+        elif kind == "random_bone":
+            self.world.place_bone_randomly(self._rng)
+        elif kind == "light":
+            self.world.set_light(
+                float(message["brightness"]),
+                float(message["elevation"]),
+                float(message["azimuth"]),
+                float(message["ambient"]),
+            )
+        elif kind == "random_light":
+            self.world.random_light(self._rng)
+        elif kind == "voice" and self.core:
+            self.core.say(message["word"])
+        elif kind == "voice":
+            log.warning(
+                "Voice command %r ignored: the core is not running", message["word"]
+            )
         elif kind == "reset" and self.core:
             self.restart()
         elif kind == "reset":
@@ -290,6 +309,7 @@ class Simulator:
                 "y": round(float(data.body("dog").xpos[1]), 3),
             },
             "pico": self.pico.status,
+            "light": self.world.light,
             "core": {
                 "attached": self.core is not None,
                 "state": self.core.state if self.core else None,

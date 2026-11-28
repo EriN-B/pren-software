@@ -259,6 +259,9 @@ button.quiet:hover { color: var(--ink); }
 
 .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .actions .wide { grid-column: 1 / -1; }
+.actions.voice { grid-template-columns: repeat(3, 1fr); }
+.light { display: grid; gap: 6px; margin-bottom: var(--u); }
+.light label { display: grid; grid-template-columns: 7.5em 1fr; align-items: center; gap: 8px; color: var(--muted); }
 .hint { margin-top: var(--u); color: var(--muted); }
 .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin-top: var(--u); }
 .facts dt { color: var(--muted); }

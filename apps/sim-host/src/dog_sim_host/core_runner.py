@@ -23,6 +23,8 @@ DETECTION_LINE = re.compile(
     r"(Bone|Person|Shoe) bounding box: x1=([-\d.]+), y1=([-\d.]+), "
     r"x2=([-\d.]+), y2=([-\d.]+), confidence=([\d.]+)"
 )
+#: The words the core's speech recognition reacts to (dog_core.command_recognition).
+VOICE_WORDS = ("hier", "sitz", "platz", "auf", "such", "brav")
 DETECTION_MAX_AGE = 0.4  # s; older boxes are gone from the core's view
 
 
@@ -68,6 +70,23 @@ class CoreRunner:
             entry = {"label": label.lower(), "box": box, "confidence": confidence}
             self._detections.append((time.monotonic(), entry))
         return True  # never drop the core's log line
+
+    def say(self, word: str) -> None:
+        """Give the core a voice command, as if its microphone had heard the word.
+
+        Like a heard word, it is taken only when the core's current state allows it, and
+        it ends the listening of that state.
+        """
+        if word not in VOICE_WORDS:
+            raise ValueError(f"not a voice command: {word!r}")
+        machine = self._machine
+        if machine is None or not any(e.id == word for e in machine.allowed_events):
+            log.warning("The core does not take %r in state %s", word, self.state)
+            return
+        machine.command_recognition.stop_event.set()
+        machine.shared.logger.info("Audio command: %s (viewer button)", word)
+        # In its own thread like the core's listeners: a state may block while it runs.
+        threading.Thread(target=machine.send, args=(word,), daemon=True).start()
 
     @property
     def state(self) -> str | None:

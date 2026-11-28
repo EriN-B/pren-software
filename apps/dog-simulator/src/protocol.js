@@ -63,6 +63,15 @@
  */
 
 /**
+ * Light of the dog's camera image; the viewer's 3D view keeps its own.
+ * @typedef {object} Light
+ * @property {number} brightness Sun, 0 to 1.
+ * @property {number} elevation Sun height in degrees, 90 = straight above.
+ * @property {number} azimuth Where the sun stands, degrees counter-clockwise from +x.
+ * @property {number} ambient Light from all sides, 0 to 1.
+ */
+
+/**
  * Sent about 30 times a second.
  * @typedef {object} FrameMessage
  * @property {"frame"} type
@@ -74,6 +83,7 @@
  * @property {{posture: string, emergency_stop: boolean, speed: number,
  *   turn_rate_deg: number, turning_to: number|null, log: object[]}} pico
  * @property {{attached: boolean, state: string|null, error: string|null}} core
+ * @property {Light} light Of the dog's camera image.
  * @property {Record<string, number[]>} detections True position: label to pixel box [x1, y1, x2, y2] in 640 x 480.
  * @property {CoreDetection[]} core_detections What the core's own detector found just now.
  * @property {Spring[]} springs The leg tension springs.
@@ -93,7 +103,11 @@
  * @typedef {{type: "pico", message: object}
  *   | {type: "emergency_stop", active: boolean}
  *   | {type: "place", object: "bone"|"person", x: number, y: number, yaw: number}
- *   | {type: "reset"}} ClientMessage
+ *   | {type: "reset"}
+ *   | {type: "random_bone"}
+ *   | ({type: "light"} & Light)
+ *   | {type: "random_light"}
+ *   | {type: "voice", word: "hier"|"sitz"|"platz"|"auf"|"such"|"brav"}} ClientMessage
  */
 
 export {};

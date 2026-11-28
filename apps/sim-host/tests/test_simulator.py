@@ -325,3 +325,33 @@ def test_log_buffer_collects_core_uart_and_sim_lines():
     finally:
         logging.getLogger().removeHandler(buffer)
         logging.getLogger("dog_sim_host.uart").removeHandler(buffer)
+
+
+def test_random_bone_lies_inside_the_search_area():
+    import math
+    import random
+
+    from dog_sim_host.world import BONE_MARGIN, SEARCH_HALF_ANGLE
+
+    world, rng = World(), random.Random(1)
+    for _ in range(200):
+        x, y, yaw = world.place_bone_randomly(rng)
+        radius, off = math.hypot(x, y), math.atan2(y, -x)
+        assert 1.5 + BONE_MARGIN <= radius <= 5.0 - BONE_MARGIN
+        assert radius * math.sin(SEARCH_HALF_ANGLE - abs(off)) >= BONE_MARGIN
+        assert 0 <= yaw < 360
+    assert np.allclose(world.data.body("bone").xpos[:2], (x, y))
+
+
+def test_light_reads_back_what_was_set():
+    world = World()
+    world.set_light(brightness=0.4, elevation=30, azimuth=200, ambient=0.2)
+    assert world.light == {
+        "brightness": 0.4,
+        "elevation": 30.0,
+        "azimuth": 200.0,
+        "ambient": 0.2,
+    }
+    world.set_light(brightness=7, elevation=-10, azimuth=0, ambient=-1)  # clamped
+    assert world.light["brightness"] == 1 and world.light["ambient"] == 0
+    assert world.light["elevation"] == 5.0

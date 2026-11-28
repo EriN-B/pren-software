@@ -6,6 +6,7 @@ MuJoCo frame: x forwards from home, y to the left, z up.
 """
 
 import math
+import random
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,6 +23,13 @@ DETECTABLE = {
     "shoe_left": ("shoe_left",),
     "shoe_right": ("shoe_right",),
 }
+
+
+# The search area, as build_field.py tapes it: a 30 degree segment behind the start
+# (towards -x), from the 1.5 m circle out to 5 m.
+SEARCH_INNER, SEARCH_OUTER = 1.5, 5.0  # m
+SEARCH_HALF_ANGLE = math.radians(15)
+BONE_MARGIN = 0.15  # m the bone's centre keeps from the tape: half its 21 cm, and some
 
 
 @dataclass(frozen=True)
@@ -122,6 +130,74 @@ class World:
             raise ValueError(f"Cannot place {name!r}; only 'bone' and 'person'")
         mujoco.mj_forward(self.model, self.data)
         self.snapshot = self._take_snapshot()
+
+    def place_bone_randomly(self, rng: random.Random) -> tuple[float, float, float]:
+        """Put the bone at a random spot in the search area, turned at random.
+
+        Spots are spread evenly over the area and keep `BONE_MARGIN` from every edge.
+
+        Returns:
+            x, y in metres and yaw in degrees, as passed to `place`.
+        """
+        while True:
+            radius = math.sqrt(rng.uniform(SEARCH_INNER**2, SEARCH_OUTER**2))
+            off = rng.uniform(-SEARCH_HALF_ANGLE, SEARCH_HALF_ANGLE)
+            to_side = radius * math.sin(SEARCH_HALF_ANGLE - abs(off))
+            if (
+                SEARCH_INNER + BONE_MARGIN <= radius <= SEARCH_OUTER - BONE_MARGIN
+                and to_side >= BONE_MARGIN
+            ):
+                break
+        x, y = -radius * math.cos(off), radius * math.sin(off)
+        yaw = rng.uniform(0, 360)
+        self.place("bone", x, y, yaw)
+        return x, y, yaw
+
+    @property
+    def light(self) -> dict[str, float]:
+        """The light the dog's camera sees, as `set_light` takes it."""
+        x, y, z = self.model.light_dir[0]
+        return {
+            "brightness": round(float(self.model.light_diffuse[0][0]), 3),
+            "elevation": round(math.degrees(math.asin(-z)), 1),
+            "azimuth": round(math.degrees(math.atan2(-y, -x)) % 360, 1),
+            "ambient": round(float(self.model.vis.headlight.ambient[0]), 3),
+        }
+
+    def set_light(
+        self, brightness: float, elevation: float, azimuth: float, ambient: float
+    ) -> None:
+        """Change the light of the dog's camera image (the viewer's 3D view keeps its own).
+
+        Args:
+            brightness: Strength of the sun, 0 to 1.
+            elevation: Height of the sun in degrees, 90 straight above, 10 low.
+            azimuth: Where the sun stands, degrees counter-clockwise from +x.
+            ambient: Light from all sides, 0 (black shadows) to 1.
+        """
+        brightness, ambient = (
+            min(max(brightness, 0.0), 1.0),
+            min(max(ambient, 0.0), 1.0),
+        )
+        up, around = math.radians(min(max(elevation, 5.0), 90.0)), math.radians(azimuth)
+        # The light shines from the sun towards the floor.
+        self.model.light_dir[0] = (
+            -math.cos(up) * math.cos(around),
+            -math.cos(up) * math.sin(around),
+            -math.sin(up),
+        )
+        self.model.light_diffuse[0] = (brightness,) * 3
+        self.model.vis.headlight.ambient = (ambient,) * 3
+
+    def random_light(self, rng: random.Random) -> dict[str, float]:
+        """Set a random light in the ranges the training images use (make_dataset.py)."""
+        self.set_light(
+            brightness=rng.uniform(0.2, 0.8),
+            elevation=rng.uniform(35, 90),
+            azimuth=rng.uniform(0, 360),
+            ambient=rng.uniform(0.25, 0.6),
+        )
+        return self.light
 
     def sensor(self, name: str) -> np.ndarray:
         """Current reading of a sensor declared in ``dog.xml``."""

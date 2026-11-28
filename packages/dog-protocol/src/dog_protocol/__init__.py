@@ -68,6 +68,15 @@ class CoreDetection(TypedDict):
     confidence: float
 
 
+class Light(TypedDict):
+    """Light of the dog's camera image; the viewer's 3D view keeps its own."""
+
+    brightness: float  # sun, 0 to 1
+    elevation: float  # sun height in degrees, 90 = straight above
+    azimuth: float  # where the sun stands, degrees counter-clockwise from +x
+    ambient: float  # light from all sides, 0 to 1
+
+
 class FrameMessage(TypedDict):
     type: Literal["frame"]
     time: float  # simulation time, s
@@ -76,6 +85,7 @@ class FrameMessage(TypedDict):
     joints: list[Joint]
     sensors: dict[str, float]  # odometry, heading, sonar, IMU
     pico: dict  # posture, motion, emergency stop, UART log
+    light: "Light"  # of the dog's camera image
     core: dict  # attached, state, error
     detections: dict[
         str, list[float]
@@ -132,4 +142,42 @@ class ResetMessage(TypedDict):
     type: Literal["reset"]
 
 
-ClientMessage = PicoMessage | EmergencyStopMessage | PlaceMessage | ResetMessage
+class RandomBoneMessage(TypedDict):
+    """Put the bone at a random spot in the search area, turned at random."""
+
+    type: Literal["random_bone"]
+
+
+class LightMessage(TypedDict):
+    """Light of the dog's camera image, the one the core sees (see `Light`)."""
+
+    type: Literal["light"]
+    brightness: float
+    elevation: float
+    azimuth: float
+    ambient: float
+
+
+class RandomLightMessage(TypedDict):
+    """A random light, in the ranges of the training images."""
+
+    type: Literal["random_light"]
+
+
+class VoiceMessage(TypedDict):
+    """With the core: a voice command, as if its microphone had heard the word."""
+
+    type: Literal["voice"]
+    word: Literal["hier", "sitz", "platz", "auf", "such", "brav"]
+
+
+ClientMessage = (
+    PicoMessage
+    | EmergencyStopMessage
+    | PlaceMessage
+    | ResetMessage
+    | RandomBoneMessage
+    | LightMessage
+    | RandomLightMessage
+    | VoiceMessage
+)

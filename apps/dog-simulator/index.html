@@ -84,6 +84,18 @@
         </section>
 
         <section class="block">
+          <h2>Voice <small>with the core: as if its microphone heard the word</small></h2>
+          <div class="actions voice" id="voice" role="group" aria-label="Voice command">
+            <button data-word="such">such</button>
+            <button data-word="hier">hier</button>
+            <button data-word="sitz">sitz</button>
+            <button data-word="platz">platz</button>
+            <button data-word="auf">auf</button>
+            <button data-word="brav">brav</button>
+          </div>
+        </section>
+
+        <section class="block">
           <h2>Pico <small>commands straight to the Pico, bypassing the core</small></h2>
           <div class="actions" id="pico">
             <button data-rotate="-90">Turn left 90°</button>
@@ -104,7 +116,24 @@
           <div class="actions">
             <button data-place="bone">Place bone</button>
             <button data-place="person">Place person</button>
+            <button id="random-bone" class="wide" title="A random spot in the search area, turned at random">Random bone</button>
             <button id="reset" class="wide" title="Restarts the simulator and the core">Reset everything</button>
+          </div>
+        </section>
+
+        <section class="block">
+          <h2>Light <small>of the dog's camera, what the core sees</small></h2>
+          <div class="light" id="light">
+            <label>Sun <input type="range" name="brightness" min="0" max="1" step="0.05"></label>
+            <label>Sun height <input type="range" name="elevation" min="5" max="90" step="1"></label>
+            <label>Sun direction <input type="range" name="azimuth" min="0" max="360" step="5"></label>
+            <label>Ambient <input type="range" name="ambient" min="0" max="1" step="0.05"></label>
+          </div>
+          <div class="actions" id="light-presets">
+            <button data-light="default">Default</button>
+            <button data-light="dim">Dim</button>
+            <button data-light="low">Low sun</button>
+            <button id="light-random">Random</button>
           </div>
         </section>
 

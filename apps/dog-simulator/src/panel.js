@@ -6,6 +6,7 @@
 
 /** @typedef {import("./protocol.js").FrameMessage} FrameMessage */
 /** @typedef {import("./protocol.js").ClientMessage} ClientMessage */
+/** @typedef {import("./protocol.js").Light} Light */
 
 /** Keys for driving by hand: forward speed in m/s and steering angle in degrees. */
 const DRIVE_KEYS = {
@@ -13,6 +14,12 @@ const DRIVE_KEYS = {
   KeyS: { speed: -0.1 }, ArrowDown: { speed: -0.1 },
   KeyA: { angle: -25 }, ArrowLeft: { angle: -25 }, // negative = counter-clockwise
   KeyD: { angle: 25 }, ArrowRight: { angle: 25 },
+};
+/** @type {Record<string, Light>} The light buttons; "default" is the scene file's light. */
+const LIGHT_PRESETS = {
+  default: { brightness: 0.7, elevation: 90, azimuth: 0, ambient: 0.5 },
+  dim: { brightness: 0.25, elevation: 70, azimuth: 0, ambient: 0.25 },
+  low: { brightness: 0.8, elevation: 12, azimuth: 180, ambient: 0.3 },
 };
 const DRIVE_INTERVAL_MS = 100; // the Pico drops drive commands older than 0.5 s
 
@@ -58,6 +65,9 @@ export class Panel {
     onClick("#pico, #posture", "data-command", (command) =>
       this.send({ type: "pico", message: { command } }),
     );
+    onClick("#voice", "data-word", (word) =>
+      this.send({ type: "voice", word: /** @type {"hier"|"sitz"|"platz"|"auf"|"such"|"brav"} */ (word) }),
+    );
     onClick("#pico", "data-rotate", (degrees) =>
       this.send({ type: "pico", message: { command: "rotate", degrees: Number(degrees) } }),
     );
@@ -65,6 +75,14 @@ export class Panel {
       startPlacing(/** @type {"bone"|"person"} */ (object)),
     );
     byId("reset").addEventListener("click", () => this.send({ type: "reset" }));
+    byId("random-bone").addEventListener("click", () => this.send({ type: "random_bone" }));
+    const sliders = /** @type {HTMLInputElement[]} */ ([...byId("light").querySelectorAll("input")]);
+    const sendLight = (/** @type {Light} */ light) => this.send({ type: "light", ...light });
+    byId("light").addEventListener("input", () =>
+      sendLight(/** @type {Light} */ (Object.fromEntries(sliders.map((s) => [s.name, Number(s.value)])))),
+    );
+    onClick("#light-presets", "data-light", (name) => sendLight(LIGHT_PRESETS[name]));
+    byId("light-random").addEventListener("click", () => this.send({ type: "random_light" }));
     byId("estop").addEventListener("click", () => {
       this.send({ type: "emergency_stop", active: !this.estopActive });
     });
@@ -131,6 +149,11 @@ export class Panel {
     byId("speed").textContent = `${pico.speed.toFixed(2)} m/s`;
     byId("turn").textContent =
       pico.turning_to === null ? `${pico.turn_rate_deg.toFixed(0)} °/s` : `→ ${pico.turning_to.toFixed(0)}°`;
+
+    for (const slider of /** @type {NodeListOf<HTMLInputElement>} */ (document.querySelectorAll("#light input"))) {
+      // Not while it is dragged: the frame still has the light from before.
+      if (slider !== document.activeElement) slider.value = String(frame.light[/** @type {keyof Light} */ (slider.name)]);
+    }
 
     this.updateJoints(frame);
     this.updateSensors(frame);

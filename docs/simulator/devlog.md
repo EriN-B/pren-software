@@ -2,6 +2,18 @@
 
 One entry per iteration: what changed, what we learned, what is next. Newest first.
 
+## 2026-11-28 · Test controls in the viewer, real photos for the detector
+
+- Voice buttons give the core a command word without a microphone; it is taken only when the
+  core's state allows it, like a heard word.
+- Random bone (a random spot in the search area, at least 15 cm from the tape, any turn) and a
+  light panel for the core's camera image: building blocks for automatic test runs.
+- `prelabel_photos.py` pre-labels real frames with YOLOE-26L, `evaluate_detector.py` measures
+  a detector the way the core runs it. A model trained on 315 real and 909 rendered frames
+  finds the bone in 73 of 73 held-out real frames; the core's current one in 29.
+- Learned: YOLO26 has no NMS and gives each box one class, so prompting bone and person in one
+  pass labels the bone a person; one pass per group fixes it.
+
 ## 2026-11-27 · Playing field to spec, real floor
 
 - The field now follows the task drawing (Abbildung 3): closed interaction circle of 1.5 m

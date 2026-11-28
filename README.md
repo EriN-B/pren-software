@@ -88,6 +88,11 @@ Open <http://localhost:5173>.
 - **With the core:** command the dog like the real one. Say "such" to your laptop's microphone,
   or show a gesture to the webcam. The dog camera shows what the core sees, with its detections;
   the log dock shows every log line of the core, the sim host and the UART.
+- **Voice** buttons (such, hier, sitz, platz, auf, brav) give the core a word as if its
+  microphone heard it, for when you cannot talk to the laptop.
+- **Random bone** puts the bone at a random spot in the search area, turned at random.
+- **Light** changes the light of the dog's camera image, the one the core sees: sun strength,
+  height and direction, ambient light, presets and random (the viewer's 3D view keeps its own).
 - **Reset everything** restarts the sim host and the core. The viewer reconnects after about 5 s.
 
 On first start macOS asks for **camera and microphone permission** for your terminal or IDE.
