@@ -85,12 +85,46 @@ def test_watch_queues_each_new_commit_once_and_drops_stale_ones(tmp_path, monkey
     db = store.connect(config.db_path)
     heads = {"develop": "1" * 40}
     monkeypatch.setattr(runner.det, "remote_heads", lambda url, branches: heads)
+    monkeypatch.setattr(runner.det, "update_clone", lambda repo, url: None)
+    monkeypatch.setattr(runner.det, "detector_tree", lambda repo, commit: commit[:3])
     first = runner.check_branches(db, config)
     assert len(first) == 1 and runner.check_branches(db, config) == []
     heads["develop"] = "2" * 40
     runner.check_branches(db, config)
     old = db.execute("select status from runs where id = ?", first).fetchone()[0]
     assert old == "skipped"
+
+
+def test_watch_skips_a_commit_whose_detector_did_not_change(tmp_path, monkeypatch):
+    config = runner.Config(data=tmp_path, branches=["develop", "dev-core"])
+    db = store.connect(config.db_path)
+    trees = {"a" * 40: "tree1", "b" * 40: "tree1", "c" * 40: "tree2", "d" * 40: None}
+    heads = {"develop": "a" * 40, "dev-core": "b" * 40}
+    monkeypatch.setattr(runner.det, "remote_heads", lambda url, branches: heads)
+    monkeypatch.setattr(runner.det, "update_clone", lambda repo, url: None)
+    monkeypatch.setattr(runner.det, "detector_tree", lambda repo, commit: trees[commit])
+    assert len(runner.check_branches(db, config)) == 1  # b has a's detector
+    skipped = db.execute("select * from runs where ref = ?", ("b" * 40,)).fetchone()
+    assert skipped["status"] == "skipped" and "unchanged" in skipped["error"]
+    heads["dev-core"] = "c" * 40  # the detector changed: tested
+    assert len(runner.check_branches(db, config)) == 1
+    heads["develop"] = "d" * 40  # no detector at all: not tested
+    assert runner.check_branches(db, config) == []
+
+
+def test_old_database_gets_the_new_column(tmp_path):
+    import sqlite3
+
+    old = sqlite3.connect(tmp_path / "b.sqlite")
+    old.executescript(
+        store.SCHEMA.replace(
+            "    detector_tree text not null default '', -- git hash of the detector folder at the commit\n",
+            "",
+        )
+    )
+    old.close()
+    db = store.connect(tmp_path / "b.sqlite")
+    assert store.enqueue(db, "manual", "develop", 1, detector_tree="x")
 
 
 def test_upload_unpacks_an_ncnn_zip_and_refuses_bad_names(tmp_path):

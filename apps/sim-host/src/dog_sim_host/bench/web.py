@@ -248,6 +248,8 @@ def status(run) -> str:
         return f"running {run['done']}/{run['trials']}"
     if run["status"] == "failed":
         return f'<span class=bad title="{html.escape(run["error"])}">failed</span>'
+    if run["status"] == "skipped":
+        return f"<span class=muted>skipped: {html.escape(run['error'])}</span>"
     return html.escape(run["status"])
 
 

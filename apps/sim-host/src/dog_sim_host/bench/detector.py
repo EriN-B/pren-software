@@ -53,6 +53,14 @@ def resolve(repo: Path, ref: str) -> str:
     return git(repo, "rev-parse", "--verify", f"{ref}^{{commit}}")
 
 
+def detector_tree(repo: Path, commit: str) -> str | None:
+    """Git hash of the detector folder at a commit: equal hashes, equal detector."""
+    try:
+        return git(repo, "rev-parse", f"{commit}:{PERCEPTION}")
+    except subprocess.CalledProcessError:
+        return None
+
+
 def detector_code(repo: Path, commit: str, cache: Path) -> Path:
     """Folder with that commit's ``object_model.py`` and its bundled model.
 

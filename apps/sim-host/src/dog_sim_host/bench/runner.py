@@ -105,7 +105,13 @@ def execute(db, config: Config, run) -> None:
             model = config.models / run["model"]
             if not model.exists():
                 raise ValueError(f"uploaded model {run['model']!r} is gone")
-        store.set_status(db, run_id, "running", commit_hash=commit)
+        store.set_status(
+            db,
+            run_id,
+            "running",
+            commit_hash=commit,
+            detector_tree=det.detector_tree(config.repo, commit) or "",
+        )
         done = {
             r[0]
             for r in db.execute("select seed from trials where run_id = ?", (run_id,))
@@ -149,15 +155,45 @@ def work_forever(config: Config) -> None:
 def check_branches(db, config: Config) -> list[int]:
     """Queue a run for each watched branch whose newest commit has none yet.
 
-    A newer commit replaces a queued run of an older one on the same branch, so a busy
-    branch never piles up a queue.
+    A commit whose detector folder is the same as in a run already done, running or
+    queued (with the commit's own model) is recorded as skipped: the bench tests only the
+    detector, so its result would be the same. A newer commit replaces a queued run of an
+    older one on the same branch, so a busy branch never piles up a queue.
     """
-    queued = []
+    queued, fetched = [], False
     for branch, commit in det.remote_heads(config.repo_url, config.branches).items():
         seen = db.execute(
             "select 1 from runs where branch = ? and ref = ?", (branch, commit)
         ).fetchone()
         if seen:
+            continue
+        if not fetched:
+            det.update_clone(config.repo, config.repo_url)
+            fetched = True
+        tree = det.detector_tree(config.repo, commit)
+        same = db.execute(
+            "select id from runs where detector_tree = ? and model = ''"
+            " and status in ('queued', 'running', 'done') order by id limit 1",
+            (tree or "-",),
+        ).fetchone()
+        if tree is None or same:
+            reason = (
+                f"detector unchanged since run {same['id']}"
+                if same
+                else "no detector at this commit"
+            )
+            store.enqueue(
+                db,
+                "commit",
+                commit,
+                config.auto_trials,
+                branch=branch,
+                status="skipped",
+                commit_hash=commit,
+                detector_tree=tree or "",
+                error=reason,
+            )
+            log.info("New commit on %s: %s, skipped: %s", branch, commit[:9], reason)
             continue
         with db:
             db.execute(
@@ -166,7 +202,14 @@ def check_branches(db, config: Config) -> list[int]:
                 (branch,),
             )
         queued.append(
-            store.enqueue(db, "commit", commit, config.auto_trials, branch=branch)
+            store.enqueue(
+                db,
+                "commit",
+                commit,
+                config.auto_trials,
+                branch=branch,
+                detector_tree=tree,
+            )
         )
         log.info("New commit on %s: %s, queued", branch, commit[:9])
     return queued

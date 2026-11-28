@@ -13,6 +13,7 @@ create table if not exists runs (
     ref text not null,                      -- branch or commit as asked for
     branch text not null default '',        -- set for runs started by a new commit
     commit_hash text not null default '',
+    detector_tree text not null default '', -- git hash of the detector folder at the commit
     model text not null default '',         -- uploaded model name; '' = the commit's own
     trials integer not null,
     done integer not null default 0,
@@ -58,6 +59,9 @@ def connect(path: Path) -> sqlite3.Connection:
     db.row_factory = sqlite3.Row
     db.execute("pragma journal_mode=wal")
     db.executescript(SCHEMA)
+    columns = {row["name"] for row in db.execute("pragma table_info(runs)")}
+    if "detector_tree" not in columns:  # databases from before the column
+        db.execute("alter table runs add detector_tree text not null default ''")
     return db
 
 
@@ -68,13 +72,24 @@ def enqueue(
     trials: int,
     model: str = "",
     branch: str = "",
+    status: str = "queued",
+    **fields,
 ) -> int:
-    """Queue a run and return its id."""
+    """Queue a run (or record one with another `status`) and return its id."""
+    values = {
+        "created": time.time(),
+        "trigger": trigger,
+        "ref": ref,
+        "branch": branch,
+        "model": model,
+        "trials": trials,
+        "status": status,
+        **fields,
+    }
     with db:
         cursor = db.execute(
-            "insert into runs (created, trigger, ref, branch, model, trials)"
-            " values (?, ?, ?, ?, ?, ?)",
-            (time.time(), trigger, ref, branch, model, trials),
+            f"insert into runs ({', '.join(values)}) values ({', '.join('?' * len(values))})",
+            tuple(values.values()),
         )
     return cursor.lastrowid
 

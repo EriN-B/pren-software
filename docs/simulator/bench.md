@@ -33,7 +33,9 @@ a number of trials. Runs start
 
 - **by hand** on the dashboard, or with `python -m dog_sim_host.bench run`,
 - **on a new commit** of a watched branch (`dev-core`, `develop`): checked every 15 minutes
-  with `git ls-remote`; a newer commit replaces a still queued run of an older one,
+  with `git ls-remote`; a newer commit replaces a still queued run of an older one. A commit
+  whose detector folder (`apps/robot/dog-perception/src/dog_perception`) is the same as in
+  an earlier run is skipped and listed with that run: its result would be the same,
 - **on a model upload**: tested on the last watched branch (`develop`). Uploads are zips of
   an exported NCNN folder only (`model.export(format="ncnn", imgsz=(384, 512))`): a `.pt`
   file is a Python pickle, and loading one runs any code it carries.
