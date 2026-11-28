@@ -11,6 +11,7 @@ lines and an arc between the pylons, which stand on its two far corners (2588 mm
 Rewrites the block between the ``field:begin`` and ``field:end`` markers in scene.xml.
 """
 
+import itertools
 import math
 import re
 from pathlib import Path
@@ -51,7 +52,7 @@ def arc(name: str, radius: float, start: float, sweep: float) -> list[str]:
     angles = [start + sweep * i / steps for i in range(steps + 1)]
     return [
         tape(f"{name}_{i}", polar(radius, a), polar(radius, b))
-        for i, (a, b) in enumerate(zip(angles, angles[1:]))
+        for i, (a, b) in enumerate(itertools.pairwise(angles))
     ]
 
 

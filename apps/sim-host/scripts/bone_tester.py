@@ -289,7 +289,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         size = int(self.headers.get("Content-Length", 0))
         if self.path != "/detect" or not 0 < size <= MAX_UPLOAD:
-            self.reply(400, b'{"error":"send one image up to 25 MB"}', "application/json")
+            self.reply(
+                400, b'{"error":"send one image up to 25 MB"}', "application/json"
+            )
             return
         try:
             body, status = detect(self.rfile.read(size)), 200
