@@ -2,6 +2,17 @@
 
 One entry per iteration: what changed, what we learned, what is next. Newest first.
 
+## 2026-11-28 · Detector bench
+
+- `dog_sim_host.bench` scores the core's bone detector on seeded rendered pictures (distance,
+  angle, bone turn, light, floor, a person, camera faults) and compares versions on the same
+  pictures. One Docker image with a dashboard, a queue and a GitHub watch, for Coolify.
+- The picture code moved from `make_dataset.py` into `dog_sim_host.photos`, shared by both.
+- First numbers, 300 trials: the core's current model finds the bone in 3 % of the rendered
+  pictures, the model trained on real and rendered frames in 96 %.
+- Learned: changing a MuJoCo light in the model needs `mj_forward` before rendering, or the
+  picture shows the light from before.
+
 ## 2026-11-28 · Test controls in the viewer, real photos for the detector
 
 - Voice buttons give the core a command word without a microphone; it is taken only when the

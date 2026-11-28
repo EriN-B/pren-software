@@ -33,6 +33,7 @@ nav:
       - Core integration: simulator/core-integration.md
       - Browser viewer: simulator/viewer.md
       - Training data: simulator/training-data.md
+      - Detector bench: simulator/bench.md
       - Dev log: simulator/devlog.md
   - Reference:
       - sim-host (Python): reference/sim-host.md

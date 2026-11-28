@@ -1,0 +1,11 @@
+# Only what bench.Dockerfile copies is needed; keep the build context small.
+.git
+**/.venv*
+.core
+**/node_modules
+**/__pycache__
+datasets
+site
+apps/robot
+apps/dog-simulator
+docs

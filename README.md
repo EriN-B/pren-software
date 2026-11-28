@@ -105,6 +105,17 @@ Allow both, then restart the sim host.
 More: [docs/simulator/](docs/simulator/index.md), with the core setup in
 [core-integration.md](docs/simulator/core-integration.md).
 
+## Detector bench
+
+Scores the core's bone detector on thousands of seeded rendered pictures and compares
+versions; one Docker image with a dashboard, for a homelab. See
+[docs/simulator/bench.md](docs/simulator/bench.md).
+
+```sh
+uv sync --all-packages --extra bench
+uv run python -m dog_sim_host.bench run --ref develop -n 200
+```
+
 ## Commands
 
 ```sh
