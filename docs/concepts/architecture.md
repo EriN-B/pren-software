@@ -6,7 +6,7 @@
 Scope: the broad picture, what runs where. Implementation details are marked *to be done*.
 Simulator details are in [simulator.md](simulator.md), which builds on this doc; a change to blocks, ports or data here means a check there.
 
-In the repo, "dog-core" is the brain: the packages `dog-core`, `dog-behavior`, `dog-perception` and `dog-recorder`.
+In the repo, "dog-core" is the brain: the packages `dog-core`, `dog-perception` and `dog-recorder` in `apps/robot`.
 
 ## Verdict
 

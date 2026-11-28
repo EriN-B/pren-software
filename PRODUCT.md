@@ -47,7 +47,7 @@ One brain, two bodies. The simulator never contains the brain; the same Python d
 - Sim time is owned by the simulator: pause, step, speed up.
 - MS3 scenarios: full competition run, search only, commands only, failure cases (unknown word, unclear gesture, bone at the edge, E-stop, search past 2 min).
 - MS3 priorities in order: full run with injected detections; real commands; demo-ready visuals. Replay, Rendered perception, the trick and a live view of the real robot are PREN2.
-- Terminology: "dog-core" means the brain (packages `dog-core`, `dog-behavior`, `dog-perception`, `dog-recorder`). See `GLOSSARY.md` and `docs/concepts/`.
+- Terminology: "dog-core" means the brain (packages `dog-core`, `dog-perception`, `dog-recorder` in `apps/robot`). See `GLOSSARY.md` and `docs/concepts/`.
 - Open: interaction area R 1.5 m (drawing) vs D 1.5 m (text); referee position and the dog's starting heading; how injected detections get realistic errors; failure reactions; how placing works in the 3D view; the camera switch rule; scenario file format.
 
 ## Brand Commitments

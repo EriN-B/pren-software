@@ -7,28 +7,25 @@ Python (uv workspace) for the brain and the apps; the web simulator is a separat
 
 ```
 packages/
-  dog-core/        dog_core        messages, ports, clock (standard library only)
-  dog-behavior/    dog_behavior    behaviour state machine (depends on dog_core)
-  dog-perception/  dog_perception  recognisers (depends on dog_core)
-  dog-recorder/    dog_recorder    recording (depends on dog_core)
-  dog-protocol/    dog_protocol    data exchanged between web simulator and sim host
+  dog-protocol/      dog_protocol    data exchanged between web simulator and sim host
 apps/
-  robot/           dog_robot       runs on the robot: brain + hardware adapters
-  sim-host/        dog_sim_host    runs on the laptop: MuJoCo robot, emulated Pico, viewer server
-  dog-simulator/                   browser viewer for the simulator, three.js + JSDoc
-scenarios/         scenario files for the simulator and tests
-config/            settings per run mode
-models/            model files (gitignored), listed in manifest.yaml
+  robot/                             the brain, its own uv workspace (see apps/robot/pyproject.toml)
+    dog-core/        dog_core        state machine, states, UART to the Pico
+    dog-perception/  dog_perception  object detector (YOLO) and gestures (MediaPipe)
+    dog-recorder/    dog_recorder    speech recognition (Vosk)
+  sim-host/          dog_sim_host    runs on the laptop: MuJoCo robot, emulated Pico, viewer server
+  dog-simulator/                     browser viewer for the simulator, three.js + JSDoc
+scenarios/           scenario files for the simulator and tests
+config/              settings per run mode
 ```
 
-The brain is `dog-core`, `dog-behavior`, `dog-perception` and `dog-recorder`: the same code runs in the
-simulator and on the robot. Only the adapters in the apps differ.
+The brain is `dog-core`, `dog-perception` and `dog-recorder` in `apps/robot`: the same code runs in the
+simulator and on the robot. The root workspace (`uv sync`) holds only `dog-protocol` and the sim host;
+the brain's ML libraries live in their own environment, which the simulator uses as `.venv-core`.
 
-Import rules (enforced by `.importlinter`):
-- `dog_core` imports only the standard library
-- `dog_behavior`, `dog_perception` and `dog_recorder` import only `dog_core`, not each other
-- the brain does not import `dog_protocol`; `dog_protocol` does not import the brain or the apps
-- apps do not import each other
+Import rules (enforced by `.importlinter` for the root workspace):
+- `dog_protocol` does not import the sim host
+- the sim host loads the brain at run time (`core_runner.py`), it does not import it
 
 Documentation: [docs/](docs/index.md), served with `uv run --group docs mkdocs serve`
 (simulator guide, robot model, Pico protocol, API reference, concepts, decisions).
@@ -41,11 +38,8 @@ Requires [uv](https://docs.astral.sh/uv/). uv installs Python 3.12 itself.
 uv sync
 ```
 
-Model dependencies are extras of `dog-perception`, install only what you need:
-
-```sh
-uv sync --all-packages --extra vosk   # also: mediapipe, yolo
-```
+The brain has its own environment in `apps/robot` (`uv sync` there); for the simulator,
+`apps/sim-host/scripts/core-env.sh` builds `.venv-core` with the brain and the sim host together.
 
 ## Simulator
 
