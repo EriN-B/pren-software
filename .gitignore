@@ -30,3 +30,6 @@ apps/sim-host/src/dog_sim_host/assets/meshes/STL/Knochen.stl
 
 # Rendered training images (apps/sim-host/scripts/make_dataset.py)
 datasets/
+
+# State machine diagrams the core renders
+*state_machine.png

@@ -2,7 +2,7 @@
 name = "pren-software"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = ["dog-core", "dog-behavior", "dog-perception", "dog-recorder", "dog-protocol", "dog-sim-host", "dog-robot"]
+dependencies = ["dog-protocol", "dog-sim-host"]
 
 [dependency-groups]
 dev = ["ruff", "pytest", "import-linter"]
@@ -12,23 +12,19 @@ docs = [
 ]
 
 [tool.uv.workspace]
-members = ["packages/*", "apps/*"]
-# the web simulator is a web app, not a Python package
-exclude = ["apps/dog-simulator"]
+members = ["packages/*", "apps/sim-host"]
+# apps/robot is its own workspace with the core's ML libraries (see its pyproject.toml);
+# the simulator loads that core from .venv-core (apps/sim-host/scripts/core-env.sh).
 
 [tool.uv.sources]
-dog-core = { workspace = true }
-dog-behavior = { workspace = true }
-dog-perception = { workspace = true }
-dog-recorder = { workspace = true }
 dog-protocol = { workspace = true }
 dog-sim-host = { workspace = true }
-dog-robot = { workspace = true }
 
 [tool.ruff]
 target-version = "py312"
 
 [tool.pytest.ini_options]
-testpaths = ["packages", "apps"]
+# apps/robot has its own environment and runs its own tests
+testpaths = ["packages", "apps/sim-host"]
 # test files share names across packages
 addopts = "--import-mode=importlib"

@@ -29,6 +29,6 @@ uv pip install -q --python "$py" --reinstall-package dog-core --reinstall-packag
   --reinstall-package dog-recorder \
   ".core/$core/dog-core" ".core/$core/dog-perception" ".core/$core/dog-recorder" \
   -e packages/dog-protocol "mujoco>=4.0.1" "websockets>=17.3" ncnn  # ncnn: YOLO model format
-uv pip install -q --python "$py" --no-deps -e packages/dog-behavior -e apps/sim-host
+uv pip install -q --python "$py" --no-deps -e apps/sim-host
 
 echo "Core from $ref ($(git rev-parse --short "$ref")) ready: .venv-core/bin/dog-sim --core"

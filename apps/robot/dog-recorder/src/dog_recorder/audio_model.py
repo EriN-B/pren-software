@@ -1,0 +1,63 @@
+import json
+import logging
+import threading
+from collections.abc import Iterator
+from pathlib import Path
+
+import sounddevice as sd
+from vosk import KaldiRecognizer, Model
+
+
+class AudioModel:
+    def __init__(self):
+        model_path = (
+            Path(__file__).resolve().parent / "vosk_model" / "vosk-model-small-de-0.15"
+        )
+
+        self.audio_model = Model(str(model_path))
+        self.shouldStream = True
+
+    def get_transcription_stream(
+        self,
+        microphone: sd.RawInputStream,
+        logger: logging.Logger,
+        stop_event: threading.Event | None = None,
+    ) -> Iterator[str]:
+
+        recognizer = KaldiRecognizer(self.audio_model, microphone.samplerate)
+
+        self.shouldStream = True
+
+        commands = {"hier", "sitz", "platz", "auf", "such", "brav"}
+
+        while (
+            microphone.active
+            and self.shouldStream
+            and (stop_event is None or not stop_event.is_set())
+        ):
+            data, _overflowed = microphone.read(4000)
+
+            if stop_event is not None and stop_event.is_set():
+                return
+
+            if recognizer.AcceptWaveform(bytes(data)):
+                text = json.loads(recognizer.Result()).get("text", "").strip()
+
+                if text:
+                    logger.info(f"FINAL: {text!r}")
+                    yield text
+
+            else:
+                partial = (
+                    json.loads(recognizer.PartialResult())
+                    .get("partial", "")
+                    .strip()
+                    .casefold()
+                )
+
+                if partial in commands:
+                    logger.info(f"PARTIAL COMMAND: {partial!r}")
+                    yield partial
+
+    def stop_transcription_stream(self):
+        self.shouldStream = False

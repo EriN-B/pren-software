@@ -4,20 +4,12 @@ version = "0.1.0"
 description = "Simulator host: runs the dog's brain with the simulator adapter; the web simulator connects to it."
 requires-python = ">=3.12"
 dependencies = [
-    "dog-core",
-    "dog-behavior",
-    "dog-perception",
-    "dog-recorder",
     "dog-protocol",
     "mujoco>=4.0.1",
     "websockets>=17.3",
 ]
 
 [tool.uv.sources]
-dog-core = { workspace = true }
-dog-behavior = { workspace = true }
-dog-perception = { workspace = true }
-dog-recorder = { workspace = true }
 dog-protocol = { workspace = true }
 
 [build-system]
