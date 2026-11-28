@@ -9,6 +9,17 @@ dependencies = [
     "websockets>=17.3",
 ]
 
+[project.optional-dependencies]
+# The detector test bench (dog_sim_host.bench): the core's detector needs these.
+bench = [
+    "ultralytics==8.4.197",  # as apps/robot/uv.lock
+    "ncnn",
+    "opencv-python-headless",
+    # Listed so the CPU-only source in the root pyproject applies (Ultralytics pulls them).
+    "torch",
+    "torchvision",
+]
+
 [tool.uv.sources]
 dog-protocol = { workspace = true }
 

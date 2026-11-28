@@ -5,7 +5,7 @@ requires-python = ">=3.12"
 dependencies = ["dog-protocol", "dog-sim-host"]
 
 [dependency-groups]
-dev = ["ruff", "pytest", "import-linter"]
+dev = ["ruff", "pytest", "import-linter", "opencv-python-headless"]
 docs = [
     "mkdocs-material>=9.8.1",
     "mkdocstrings[python]>=1.0.8",
@@ -19,6 +19,14 @@ members = ["packages/*", "apps/sim-host"]
 [tool.uv.sources]
 dog-protocol = { workspace = true }
 dog-sim-host = { workspace = true }
+# CPU builds: the bench image has no GPU, and the CUDA builds are gigabytes bigger.
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [tool.ruff]
 target-version = "py312"
