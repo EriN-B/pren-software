@@ -45,8 +45,33 @@ To train on simulator and real images together, list both folders in one `data.y
 (`train: [/abs/datasets/sim/images/train, /abs/datasets/real/images/train]`). Judge every
 model on held-out **real** frames only. A model trained on renders always scores well on renders.
 
+## Real photos
+
+Frames from videos of the real field are labelled in three steps:
+
+```bash
+# 1. Crop to the camera's 4:3, scale to 640 x 480, and pre-label bone, person and shoe with
+#    YOLOE-26L (text prompts, full resolution, so far bones are found too).
+.venv-core/bin/python apps/sim-host/scripts/prelabel_photos.py frames/*.jpg --out datasets/real
+# 2. Check and fix the boxes in Label Studio (pip/uv tool "label-studio"), export YOLO.
+# 3. Measure a detector on held-out real frames, the way the core runs it.
+.venv-core/bin/python apps/sim-host/scripts/evaluate_detector.py datasets/real/images/val
+.venv-core/bin/python apps/sim-host/scripts/evaluate_detector.py datasets/real/images/val \
+    --model datasets/runs/sim-real/weights/best.pt
+```
+
+In the first set, 817 of the 921 final boxes are YOLOE's unchanged, 12 were moved and 92
+drawn by hand. Split frames from video into train and val in blocks (e.g. every 5th block of 20
+frames), not at random: neighbouring frames are near-copies.
+
+First result (2026-11-28, 315 real + 909 rendered training frames, `yolo26n.pt`, 100 epochs,
+76 held-out real frames from the same room): bone found in 73 of 73 frames (core's detector
+before: 29), shoes 78 % (before: 0 %), persons 65 % (before: 56 %).
+
 ## Not covered
 
 - Walls, furniture and people in the background: the scene has only a light grey sky.
 - The bone always lies flat.
 - Whether renders help on real images at all is still unknown. The real test set decides.
+- The real test frames come from the same room as the training frames; a field elsewhere
+  will score lower.
