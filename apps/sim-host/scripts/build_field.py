@@ -1,10 +1,10 @@
 """Generate the competition field in scene.xml: tape on the floor and pylons.
 
-As taped on the real playing field (photo, 2026-11-20) and in the task drawing: the dog
-starts in a 20 x 50 cm start field in the middle of a taped circle of 1.5 m radius (the
-interaction area). The search area is a 30 degree segment with its tip at the dog, behind
-it (the core turns 180 degrees for "such"): two tape lines run from the circle out to 5 m,
-where the pylons stand. The circle is open between the two lines; there is no far arc.
+As in the task drawing (PREN Abbildung 3) and the photos of the taped field (2026-11-27):
+the dog starts in a 20 x 50 cm start field in the middle of a taped circle of 1.5 m radius
+(the interaction area). The search area is a 30 degree segment with its tip at the dog,
+behind it (the core turns 180 degrees for "such"), from the circle out to 5 m: two straight
+lines and an arc between the pylons, which stand on its two far corners (2588 mm apart).
 
     .venv/bin/python apps/sim-host/scripts/build_field.py
 
@@ -22,7 +22,9 @@ INTERACTION_RADIUS = 1.5  # m
 SEARCH_ANGLE = math.radians(30)
 SEARCH_RADIUS = 5.0  # m from the dog, where the pylons stand
 SEARCH_DIRECTION = math.pi  # behind the dog, which starts facing +x
-TAPE_WIDTH = 0.05  # m, white floor tape (photo)
+TAPE_WIDTH = (
+    0.02  # m, white floor tape (photos: about a seventh of the 14 cm cone base)
+)
 TAPE_HEIGHT = 0.0005  # m, half height: lies on the floor
 ARC_STEP = math.radians(4)  # tape pieces along the circle
 
@@ -41,6 +43,16 @@ def tape(name: str, a: tuple[float, float], b: tuple[float, float]) -> str:
 
 def polar(radius: float, angle: float) -> tuple[float, float]:
     return radius * math.cos(angle), radius * math.sin(angle)
+
+
+def arc(name: str, radius: float, start: float, sweep: float) -> list[str]:
+    """Tape along a circle from angle start, counter-clockwise by sweep, in short pieces."""
+    steps = math.ceil(abs(sweep) / ARC_STEP)
+    angles = [start + sweep * i / steps for i in range(steps + 1)]
+    return [
+        tape(f"{name}_{i}", polar(radius, a), polar(radius, b))
+        for i, (a, b) in enumerate(zip(angles, angles[1:]))
+    ]
 
 
 def build() -> str:
@@ -65,19 +77,8 @@ def build() -> str:
             f'    <geom name="pylon_{side}" class="pylon" pos="{x:.4f} {y:.4f} 0"/>'
         )
 
-    # The circle, from the right search line all the way round to the left one.
-    open_arc = 2 * math.pi - SEARCH_ANGLE
-    steps = round(open_arc / ARC_STEP)
-    for i in range(steps):
-        a = right + open_arc * i / steps
-        b = right + open_arc * (i + 1) / steps
-        lines.append(
-            tape(
-                f"tape_circle_{i}",
-                polar(INTERACTION_RADIUS, a),
-                polar(INTERACTION_RADIUS, b),
-            )
-        )
+    lines += arc("tape_search_far", SEARCH_RADIUS, left, SEARCH_ANGLE)
+    lines += arc("tape_circle", INTERACTION_RADIUS, 0, 2 * math.pi)
     return "\n".join(lines)
 
 

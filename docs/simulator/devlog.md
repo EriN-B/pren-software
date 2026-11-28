@@ -2,6 +2,14 @@
 
 One entry per iteration: what changed, what we learned, what is next. Newest first.
 
+## 2026-11-27 · Playing field to spec, real floor
+
+- The field now follows the task drawing (Abbildung 3): closed interaction circle of 1.5 m
+  radius, 30° search segment from the circle to 5 m with the far arc taped, pylons on its far
+  corners 2588 mm apart. Tape is 2 cm wide (photos), not 5 cm.
+- The floor is the field's grey slate-look linoleum from photos: cloudy veins, speckle, long
+  curved scratches, small pits. It tiles every 1 m (`texuniform`), not 0.6 m.
+
 ## 2026-11-27 · Training data for the bone detector
 
 - `scripts/make_dataset.py` renders labelled YOLO images of the bone: random floor, light,
