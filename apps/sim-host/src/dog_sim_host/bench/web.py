@@ -101,8 +101,10 @@ class Handler(BaseHTTPRequestHandler):
             if url.path == "/runs":
                 form = {k: v[0] for k, v in parse_qs(body.decode()).items()}
                 model = form.get("model", "")
-                if model and not (self.config.models / model).exists():
-                    raise ValueError(f"no model {model!r}")
+                if model and not (
+                    NAME.match(model) and (self.config.models / model).is_dir()
+                ):
+                    raise ValueError(f"no NCNN model {model!r}")
                 ref = form.get("ref", "develop").strip()
                 if not re.fullmatch(r"[A-Za-z0-9._/-]{1,100}", ref):
                     raise ValueError("ref: a branch name or commit hash")
@@ -153,18 +155,21 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def save_model(models: Path, name: str, body: bytes) -> str:
-    """Store an uploaded model: a ``.pt`` file, or a zip holding an NCNN folder.
+    """Store an uploaded model: a zip holding an exported NCNN folder.
+
+    Only NCNN: its files are plain weights and a layer list. A ``.pt`` file is a Python
+    pickle, and loading one runs whatever code it carries.
 
     Returns:
         The name the model is stored and picked under.
     """
     if not NAME.match(name):
         raise ValueError("model name: letters, digits, . _ -")
+    if not name.endswith(".zip"):
+        raise ValueError(
+            "upload a .zip of an NCNN model folder (export with format='ncnn')"
+        )
     models.mkdir(parents=True, exist_ok=True)
-    if name.endswith(".pt"):
-        target = models / name
-        target.write_bytes(body)
-        return name
     stem = name.removesuffix(".zip").removesuffix("_ncnn_model")
     target = (
         models / f"{stem}_ncnn_model"
@@ -215,8 +220,9 @@ def index(db: sqlite3.Connection, config: runner.Config) -> str:
   <button>Queue</button>
 </form>
 <h2>Upload a model</h2>
-<p class=muted>An NCNN folder as .zip, or a .pt file. It is tested on {html.escape(config.branches[-1])} right away.</p>
-<form class=inline id=upload><input type=file id=file accept=".zip,.pt" required><button>Upload</button></form>
+<p class=muted>An exported NCNN model folder as .zip (<code>model.export(format="ncnn")</code>; .pt files are not
+taken, loading them can run code). It is tested on {html.escape(config.branches[-1])} right away.</p>
+<form class=inline id=upload><input type=file id=file accept=".zip" required><button>Upload</button></form>
 <script>
 document.getElementById('upload').onsubmit = async (e) => {{
   e.preventDefault();

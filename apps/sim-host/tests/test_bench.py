@@ -103,6 +103,8 @@ def test_upload_unpacks_an_ncnn_zip_and_refuses_bad_names(tmp_path):
     assert (tmp_path / name / "model.ncnn.bin").read_text() == "model.ncnn.bin"
     with pytest.raises(ValueError):
         web.save_model(tmp_path, "../evil.zip", data.getvalue())
+    with pytest.raises(ValueError):  # a pickle runs code when loaded
+        web.save_model(tmp_path, "best.pt", b"pickle")
 
 
 def test_pages_render(tmp_path):

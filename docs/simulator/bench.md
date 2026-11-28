@@ -34,7 +34,9 @@ a number of trials. Runs start
 - **by hand** on the dashboard, or with `python -m dog_sim_host.bench run`,
 - **on a new commit** of a watched branch (`dev-core`, `develop`): checked every 15 minutes
   with `git ls-remote`; a newer commit replaces a still queued run of an older one,
-- **on a model upload**: tested on the last watched branch (`develop`).
+- **on a model upload**: tested on the last watched branch (`develop`). Uploads are zips of
+  an exported NCNN folder only (`model.export(format="ncnn", imgsz=(384, 512))`): a `.pt`
+  file is a Python pickle, and loading one runs any code it carries.
 
 The dashboard shows per run the hit rate as a map of distance × angle, hit rates by bone size,
 turn, floor, light, person and camera faults, and every missed or falsely detected picture
